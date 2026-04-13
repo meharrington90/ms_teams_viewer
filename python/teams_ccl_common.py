@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+
+import re
+from html import unescape
+from pathlib import Path
+
+
+THREAD_ID_PATTERN = (
+    r"(?:E19:meeting_[A-Za-z0-9_-]+@thread\.v2|(?:-19:|19:)[^\"\x00]+@(?:thread\.v2|unq\.gbl\.spaces)|48:calllogs)"
+)
+STRICT_THREAD_ID_RE = re.compile(
+    r"^(?:48:calllogs|E19:meeting_[A-Za-z0-9_-]+@thread\.v2|-19:[0-9a-f]+@thread\.v2|19:[0-9a-f]+@thread\.v2|19:[0-9a-f-]+_[0-9a-f-]+@unq\.gbl\.spaces)$",
+    re.I,
+)
+GUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
+CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]+")
+MULTISPACE_RE = re.compile(r"\s+")
+HTML_TAG_RE = re.compile(r"<[^>]+>")
+PROFILE_RE = re.compile(
+    r'"displayName":"([^"]+)".+?"email":"([^"]+)".+?"tenantId":"([^"]+)".+?"oid":"([^"]+)"',
+    re.S,
+)
+
+
+def read_text(path: Path) -> str:
+    return path.read_bytes().decode("utf-8", "ignore")
+
+
+def clean_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = CONTROL_RE.sub("", value)
+    value = value.replace("\x00", "")
+    value = value.strip()
+    return value or None
+
+
+def clean_text(value: str | None) -> str | None:
+    value = clean_value(value)
+    if value is None:
+        return None
+    value = MULTISPACE_RE.sub(" ", value)
+    return value.strip() or None
+
+
+def html_to_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
+    value = HTML_TAG_RE.sub(" ", value)
+    value = unescape(value)
+    return clean_text(value)
+
+
+def normalize_thread_id(value: str | None) -> str | None:
+    value = clean_value(value)
+    if value is None:
+        return None
+    value = value.lstrip("[")
+    if STRICT_THREAD_ID_RE.match(value):
+        return value
+    return None
+
+
+def classify_thread(thread_id: str) -> str:
+    if thread_id == "48:calllogs":
+        return "call_logs"
+    if thread_id.startswith("E19:meeting_"):
+        return "meeting"
+    if thread_id.endswith("@unq.gbl.spaces"):
+        return "chat_space"
+    if thread_id.endswith("@thread.v2"):
+        return "thread"
+    return "unknown"
+
+
+def init_thread_record(thread_id: str) -> dict:
+    return {
+        "id": thread_id,
+        "category": classify_thread(thread_id),
+        "label": None,
+        "metadata_quality": "inventory_only",
+        "inventory": {},
+        "metadata": {},
+        "meeting": None,
+        "participants": [],
+        "participant_ids": [],
+        "last_message": None,
+        "messages": [],
+        "source_files": [],
+    }
+
+
+def parse_profile(local_storage_dir: Path) -> dict | None:
+    for path in sorted(local_storage_dir.glob("*")):
+        if path.suffix not in {".ldb", ".log"}:
+            continue
+        try:
+            data = read_text(path)
+        except Exception:
+            continue
+        match = PROFILE_RE.search(data)
+        if not match:
+            continue
+        return {
+            "display_name": clean_text(match.group(1)),
+            "email": clean_text(match.group(2)),
+            "tenant_id": clean_text(match.group(3)),
+            "oid": clean_text(match.group(4)),
+            "source": str(path),
+        }
+    return None

@@ -1,0 +1,14 @@
+.DS_Store
+__pycache__/
+.tools/
+.venv/
+.venv-ccl/
+
+Library/
+teams_pipeline_output*/
+teams_ccl_summary.json
+teams_ccl_canonical_v1.json
+teams_ccl_browser_v1.html
+teams_ccl_browser_v1 copy*.html
+teams_ccl_csv_v1/
+teams_indexeddb_ccl_dump.json
