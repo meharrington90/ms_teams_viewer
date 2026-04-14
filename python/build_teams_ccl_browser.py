@@ -52,33 +52,54 @@ HTML_TEMPLATE = """<!doctype html>
         radial-gradient(circle at bottom right, rgba(181,88,52,.08), transparent 24%),
         linear-gradient(180deg, #f7f4ee 0%, #efe9df 100%);
       min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
     }
     .app {
       display: grid;
-      grid-template-columns: 360px 1fr;
-      min-height: 100vh;
+      grid-template-columns: 360px minmax(0, 1fr);
+      min-height: 0;
+      height: 100vh;
+      max-width: 100vw;
+      overflow: hidden;
     }
     .sidebar {
       border-right: 1px solid var(--line);
       background: rgba(255,250,242,.88);
       backdrop-filter: blur(8px);
       padding: 20px;
-      position: sticky;
-      top: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
       height: 100vh;
-      overflow: auto;
+      min-height: 0;
+      overflow: hidden;
+      min-width: 0;
     }
     .main {
       padding: 20px 24px 32px;
       overflow: auto;
+      min-height: 0;
+      min-width: 0;
     }
     h1, h2, h3 { margin: 0; font-weight: 600; }
     .title {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
+      flex-wrap: wrap;
       gap: 12px;
       margin-bottom: 12px;
+      min-width: 0;
+    }
+    .title > * {
+      min-width: 0;
+    }
+    .title h1,
+    .title h2,
+    .title h3 {
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .summary {
       display: grid;
@@ -146,7 +167,26 @@ HTML_TEMPLATE = """<!doctype html>
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 0;
+    }
+    .sidebar-top {
+      display: grid;
+      gap: 0;
+      min-width: 0;
+      padding-bottom: 12px;
+    }
+    .sidebar-divider {
+      height: 1px;
+      background: var(--line);
+      margin-right: 2px;
+      flex: 0 0 auto;
+    }
+    .sidebar-list-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding-top: 12px;
+      scrollbar-gutter: stable;
     }
     .chip {
       padding: 6px 10px;
@@ -167,16 +207,37 @@ HTML_TEMPLATE = """<!doctype html>
       background: rgba(255,255,255,.7);
       cursor: pointer;
       transition: transform .15s ease, border-color .15s ease, background .15s ease;
+      min-width: 0;
+      overflow: hidden;
     }
     .list-row:hover { transform: translateY(-1px); border-color: var(--line); }
     .list-row.active { border-color: var(--accent); background: var(--accent-soft); }
+    .list-row > div {
+      min-width: 0;
+    }
+    .list-row strong {
+      display: block;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     .list-row .meta {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 8px;
+      align-items: baseline;
       color: var(--muted);
       font-size: 12px;
       margin-top: 6px;
+      min-width: 0;
+    }
+    .list-row .meta span {
+      min-width: 0;
+    }
+    .list-row .meta span:last-child {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      justify-self: end;
     }
     .preview {
       color: var(--muted);
@@ -187,10 +248,13 @@ HTML_TEMPLATE = """<!doctype html>
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .panel {
       padding: 18px 20px;
       margin-bottom: 16px;
+      min-width: 0;
     }
     .detail-toolbar {
       display: grid;
@@ -475,12 +539,14 @@ HTML_TEMPLATE = """<!doctype html>
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
       margin-top: 14px;
+      min-width: 0;
     }
     .meta-block {
       background: rgba(255,255,255,.82);
       border: 1px solid var(--line);
       border-radius: 12px;
       padding: 10px 12px;
+      min-width: 0;
     }
     .meta-block .k {
       color: var(--muted);
@@ -499,8 +565,26 @@ HTML_TEMPLATE = """<!doctype html>
       padding: 24px 8px;
     }
     @media (max-width: 980px) {
-      .app { grid-template-columns: 1fr; }
-      .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+      body {
+        height: auto;
+        overflow: auto;
+      }
+      .app {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+      }
+      .sidebar {
+        height: auto;
+        min-height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .sidebar-list-wrap {
+        overflow: visible;
+        padding-top: 12px;
+      }
       .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .meta-grid { grid-template-columns: 1fr; }
       .call-event-grid { grid-template-columns: 1fr; }
@@ -511,36 +595,41 @@ HTML_TEMPLATE = """<!doctype html>
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="title">
-        <h1>MS Teams Viewer</h1>
+      <div class="sidebar-top">
+        <div class="title">
+          <h1>MS Teams Viewer</h1>
+        </div>
+        <div class="view-tabs">
+          <button id="viewMessages" class="tab active" type="button">Messages</button>
+          <button id="viewCalls" class="tab" type="button">Calls</button>
+        </div>
+        <div id="messagesTools" class="toolbar">
+          <input id="messageSearch" type="search" placeholder="Search conversations and messages">
+          <select id="categoryFilter">
+            <option value="">All message categories</option>
+            <option value="chat_space">Chats</option>
+            <option value="team_chat">Meeting chats</option>
+            <option value="thread">Group chats</option>
+          </select>
+        </div>
+        <div id="callsTools" class="toolbar hidden">
+          <input id="callSearch" type="search" placeholder="Search calls, participants, direction, state">
+          <select id="callDirectionFilter">
+            <option value="">All calls</option>
+            <option value="incoming">Incoming</option>
+            <option value="outgoing">Outgoing</option>
+            <option value="missed">Missed</option>
+          </select>
+        </div>
+        <div class="chip-row">
+          <div id="sidebarCount" class="chip"></div>
+        </div>
       </div>
-      <div class="view-tabs">
-        <button id="viewMessages" class="tab active" type="button">Messages</button>
-        <button id="viewCalls" class="tab" type="button">Calls</button>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-list-wrap">
+        <div id="threadList" class="list"></div>
+        <div id="callList" class="list hidden"></div>
       </div>
-      <div id="messagesTools" class="toolbar">
-        <input id="messageSearch" type="search" placeholder="Search conversations and messages">
-        <select id="categoryFilter">
-          <option value="">All message categories</option>
-          <option value="chat_space">Chats</option>
-          <option value="team_chat">Meeting chats</option>
-          <option value="thread">Group chats</option>
-        </select>
-      </div>
-      <div id="callsTools" class="toolbar hidden">
-        <input id="callSearch" type="search" placeholder="Search calls, participants, direction, state">
-        <select id="callDirectionFilter">
-          <option value="">All calls</option>
-          <option value="incoming">Incoming</option>
-          <option value="outgoing">Outgoing</option>
-          <option value="missed">Missed</option>
-        </select>
-      </div>
-      <div class="chip-row">
-        <div id="sidebarCount" class="chip"></div>
-      </div>
-      <div id="threadList" class="list"></div>
-      <div id="callList" class="list hidden"></div>
     </aside>
     <main class="main">
       <div class="summary">
