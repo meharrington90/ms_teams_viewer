@@ -373,6 +373,43 @@ HTML_TEMPLATE = """<!doctype html>
       gap: 8px;
       margin-top: 10px;
     }
+    .participant-cloud {
+      margin-top: 10px;
+    }
+    .expandable-shell {
+      display: grid;
+      gap: 8px;
+    }
+    .expandable-list {
+      margin-top: 0;
+      align-items: flex-start;
+      min-width: 0;
+      position: relative;
+    }
+    .expandable-list.collapsed {
+      max-height: 76px;
+      overflow: hidden;
+    }
+    .expandable-list.expanded {
+      max-height: none;
+      overflow: visible;
+    }
+    .expandable-list.collapsed::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 18px;
+      background: linear-gradient(180deg, rgba(255,250,242,0), rgba(255,250,242,.96));
+      pointer-events: none;
+    }
+    .call-event-block .expandable-list.collapsed::after {
+      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.96));
+    }
+    .toggle-expandable-list {
+      justify-self: start;
+    }
     .messages {
       display: grid;
       gap: 10px;
@@ -482,6 +519,9 @@ HTML_TEMPLATE = """<!doctype html>
       border: 1px solid var(--call-outline, var(--line));
       border-radius: 10px;
       padding: 8px 10px;
+    }
+    .call-event-block.wide {
+      grid-column: 1 / -1;
     }
     .call-event-block .k {
       color: var(--muted);
@@ -1354,6 +1394,77 @@ HTML_TEMPLATE = """<!doctype html>
       return stripFcs((DATA.guid_directory && DATA.guid_directory[clean]) || clean || "Unknown");
     }
 
+    function parseJsonObject(text) {
+      try {
+        const parsed = JSON.parse(String(text || ""));
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function resolveMemberEntries(entries) {
+      const memberIds = [];
+      const memberNames = [];
+      for (const entry of Array.isArray(entries) ? entries : []) {
+        const memberId = normalizeGuid((entry && (entry.id || entry.mri || entry.userId)) || "");
+        const friendlyName = stripFcs((entry && (entry.friendlyname || entry.displayName || entry.name)) || "");
+        const resolvedName = friendlyName || (memberId ? resolveGuidLabel(memberId) : "");
+        if (memberId && !memberIds.includes(memberId)) memberIds.push(memberId);
+        if (resolvedName && !memberNames.includes(resolvedName)) memberNames.push(resolvedName);
+      }
+      return { memberIds, memberNames };
+    }
+
+    function renderExpandableChipGroup(values, options = {}) {
+      const items = dedupe((values || []).map(value => stripFcs(value)).filter(Boolean));
+      if (!items.length) {
+        return `<div class="subtle">${escapeHtml(options.emptyLabel || "No people listed.")}</div>`;
+      }
+      return `
+        <div class="expandable-shell">
+          <div class="chips expandable-list collapsed" data-expandable-list>
+            ${items.map(name => `<div class="chip">${escapeHtml(name)}</div>`).join("")}
+          </div>
+          <button
+            type="button"
+            class="call-link toggle-expandable-list hidden"
+            data-expand-label="${escapeHtml(options.expandLabel || "Expand")}"
+            data-collapse-label="${escapeHtml(options.collapseLabel || "Collapse")}"
+          >${escapeHtml(options.expandLabel || "Expand")}</button>
+        </div>
+      `;
+    }
+
+    function initExpandableLists(scope) {
+      for (const shell of scope.querySelectorAll(".expandable-shell")) {
+        const list = shell.querySelector("[data-expandable-list]");
+        const button = shell.querySelector(".toggle-expandable-list");
+        if (!list || !button) continue;
+
+        list.classList.remove("expanded");
+        list.classList.add("collapsed");
+        const needsToggle = list.scrollHeight > list.clientHeight + 4;
+        button.classList.toggle("hidden", !needsToggle);
+        if (!needsToggle) {
+          list.classList.remove("collapsed");
+          continue;
+        }
+
+        const updateButtonText = () => {
+          button.textContent = list.classList.contains("expanded")
+            ? (button.dataset.collapseLabel || "Collapse")
+            : (button.dataset.expandLabel || "Expand");
+        };
+        updateButtonText();
+        button.addEventListener("click", () => {
+          const expanded = list.classList.toggle("expanded");
+          list.classList.toggle("collapsed", !expanded);
+          updateButtonText();
+        });
+      }
+    }
+
     function parseAddMemberEvent(message) {
       const unique = [];
       for (const guid of extractGuids(message.content_text || "")) {
@@ -1374,9 +1485,63 @@ HTML_TEMPLATE = """<!doctype html>
       };
     }
 
+    function parseMemberJoinedEvent(message) {
+      const payload = parseJsonObject(message.content_text || "");
+      const actorId = normalizeGuid(payload && payload.initiator);
+      const actorName = stripFcs(
+        message.sender_display_name ||
+        (actorId && DATA.guid_directory && DATA.guid_directory[actorId]) ||
+        "System"
+      );
+      const members = resolveMemberEntries(payload && payload.members);
+      return {
+        actorId,
+        actorName,
+        joinedIds: members.memberIds,
+        joinedNames: members.memberNames,
+      };
+    }
+
+    function parseDeleteMemberEvent(message) {
+      const actorId = normalizeGuid(message.sender_id || "");
+      const actorName = stripFcs(
+        message.sender_display_name ||
+        (actorId && DATA.guid_directory && DATA.guid_directory[actorId]) ||
+        ""
+      );
+      let removedIds = dedupe(extractGuids(message.content_text || "").map(normalizeGuid).filter(Boolean));
+      if (actorId) {
+        const filtered = removedIds.filter(id => id !== actorId);
+        if (filtered.length) removedIds = filtered;
+      }
+      const removedNames = dedupe(removedIds.map(resolveGuidLabel).filter(Boolean));
+      return {
+        actorId,
+        actorName,
+        removedIds,
+        removedNames,
+      };
+    }
+
+    function isMembershipEvent(message) {
+      return [
+        "ThreadActivity/AddMember",
+        "ThreadActivity/MemberJoined",
+        "ThreadActivity/DeleteMember",
+      ].includes(message.message_type);
+    }
+
+    function renderMembershipNamesBlock(label, values, emptyLabel = "No people listed.") {
+      return `
+        <div class="call-event-block wide">
+          <div class="k">${escapeHtml(label)}</div>
+          ${renderExpandableChipGroup(values, { emptyLabel })}
+        </div>
+      `;
+    }
+
     function renderAddMemberEventBody(message, thread) {
       const parsed = parseAddMemberEvent(message);
-      const addedLabel = parsed.addedNames.length ? parsed.addedNames.join(" / ") : "Unknown";
       return `
         <div class="call-event" style="--call-bg:#e4e8ed;--call-outline:#66727f;--call-block-bg:#f4f6f8;--call-title:#3e4852;">
           <div class="call-event-header">
@@ -1384,9 +1549,9 @@ HTML_TEMPLATE = """<!doctype html>
           </div>
           <div class="call-event-grid">
             <div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(parsed.actorName)}</div></div>
-            <div class="call-event-block"><div class="k">Added</div><div>${escapeHtml(addedLabel)}</div></div>
             <div class="call-event-block"><div class="k">Added Count</div><div>${escapeHtml(String(parsed.addedNames.length || 0))}</div></div>
             <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(stripFcs(thread.label || thread.id || ""))}</div></div>
+            ${renderMembershipNamesBlock("Added", parsed.addedNames, "No added members were resolved.")}
           </div>
           <details class="raw-event" ${state.expandRawEvents ? "open" : ""}>
             <summary>Show raw event payload</summary>
@@ -1394,6 +1559,55 @@ HTML_TEMPLATE = """<!doctype html>
           </details>
         </div>
       `;
+    }
+
+    function renderMemberJoinedEventBody(message, thread) {
+      const parsed = parseMemberJoinedEvent(message);
+      return `
+        <div class="call-event" style="--call-bg:#e4f0e9;--call-outline:#5b7f69;--call-block-bg:#f5faf7;--call-title:#2f5e40;">
+          <div class="call-event-header">
+            <div class="call-event-title">${escapeHtml(parsed.joinedNames.length > 1 ? "Members Joined" : "Member Joined")}</div>
+          </div>
+          <div class="call-event-grid">
+            <div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(parsed.actorName || "System")}</div></div>
+            <div class="call-event-block"><div class="k">Joined Count</div><div>${escapeHtml(String(parsed.joinedNames.length || 0))}</div></div>
+            <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(stripFcs(thread.label || thread.id || ""))}</div></div>
+            ${renderMembershipNamesBlock("Joined", parsed.joinedNames, "No joined members were resolved.")}
+          </div>
+          <details class="raw-event" ${state.expandRawEvents ? "open" : ""}>
+            <summary>Show raw event payload</summary>
+            <div class="body mono">${escapeHtml(message.content_text || "")}</div>
+          </details>
+        </div>
+      `;
+    }
+
+    function renderDeleteMemberEventBody(message, thread) {
+      const parsed = parseDeleteMemberEvent(message);
+      return `
+        <div class="call-event" style="--call-bg:#f6ece4;--call-outline:#9a6b52;--call-block-bg:#fff7f1;--call-title:#7c523b;">
+          <div class="call-event-header">
+            <div class="call-event-title">${escapeHtml(parsed.removedNames.length > 1 ? "Members Removed" : "Member Removed")}</div>
+          </div>
+          <div class="call-event-grid">
+            ${parsed.actorName ? `<div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(parsed.actorName)}</div></div>` : ``}
+            <div class="call-event-block"><div class="k">Removed Count</div><div>${escapeHtml(String(parsed.removedNames.length || 0))}</div></div>
+            <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(stripFcs(thread.label || thread.id || ""))}</div></div>
+            ${renderMembershipNamesBlock("Removed", parsed.removedNames, "No removed members were resolved.")}
+          </div>
+          <details class="raw-event" ${state.expandRawEvents ? "open" : ""}>
+            <summary>Show raw event payload</summary>
+            <div class="body mono">${escapeHtml(message.content_text || "")}</div>
+          </details>
+        </div>
+      `;
+    }
+
+    function renderMembershipEventBody(message, thread) {
+      if (message.message_type === "ThreadActivity/AddMember") return renderAddMemberEventBody(message, thread);
+      if (message.message_type === "ThreadActivity/MemberJoined") return renderMemberJoinedEventBody(message, thread);
+      if (message.message_type === "ThreadActivity/DeleteMember") return renderDeleteMemberEventBody(message, thread);
+      return `<div class="body">${escapeHtml(message.content_text || "")}</div>`;
     }
 
     function linkedThreadsForCall(call) {
@@ -1494,6 +1708,20 @@ HTML_TEMPLATE = """<!doctype html>
     function messageDisplaySender(message) {
       if (message.message_type === "ThreadActivity/AddMember") {
         return parseAddMemberEvent(message).actorName || "Unknown";
+      }
+      if (message.message_type === "ThreadActivity/MemberJoined") {
+        const parsed = parseMemberJoinedEvent(message);
+        if (parsed.actorName && parsed.actorName !== "System") return parsed.actorName;
+        if (parsed.joinedNames.length === 1) return parsed.joinedNames[0];
+        if (parsed.joinedNames.length > 1) return `${parsed.joinedNames.length} members`;
+        return "Membership Event";
+      }
+      if (message.message_type === "ThreadActivity/DeleteMember") {
+        const parsed = parseDeleteMemberEvent(message);
+        if (parsed.actorName) return parsed.actorName;
+        if (parsed.removedNames.length === 1) return parsed.removedNames[0];
+        if (parsed.removedNames.length > 1) return `${parsed.removedNames.length} members`;
+        return "Membership Event";
       }
       return stripFcs(message.sender_display_name || message.sender_id || "Unknown");
     }
@@ -1616,6 +1844,14 @@ HTML_TEMPLATE = """<!doctype html>
       if (message.message_type === "ThreadActivity/AddMember") {
         const parsed = parseAddMemberEvent(message);
         parts.push(parsed.actorName, ...(parsed.addedNames || []));
+      }
+      if (message.message_type === "ThreadActivity/MemberJoined") {
+        const parsed = parseMemberJoinedEvent(message);
+        parts.push(parsed.actorName, ...(parsed.joinedNames || []));
+      }
+      if (message.message_type === "ThreadActivity/DeleteMember") {
+        const parsed = parseDeleteMemberEvent(message);
+        parts.push(parsed.actorName, ...(parsed.removedNames || []));
       }
       return parts.filter(Boolean).join(" ").toLowerCase();
     }
@@ -1770,8 +2006,8 @@ HTML_TEMPLATE = """<!doctype html>
                     </div>
                     ${(message.synthetic_call || message.message_type === "Event/Call")
                       ? renderCallEventBody(message)
-                      : message.message_type === "ThreadActivity/AddMember"
-                        ? renderAddMemberEventBody(message, group.thread)
+                      : isMembershipEvent(message)
+                        ? renderMembershipEventBody(message, group.thread)
                         : `<div class="body">${highlightSearchHtml(message.content_text || "")}</div>`}
                   </div>
                 `).join("")}
@@ -1781,6 +2017,7 @@ HTML_TEMPLATE = """<!doctype html>
           `).join("") || `<div class="empty">No timeline items match the current search.</div>`}
         </div>
       `;
+      initExpandableLists(contentPanel);
 
       [...contentPanel.querySelectorAll(".open-search-thread")].forEach(element => {
         element.addEventListener("click", () => {
@@ -1838,8 +2075,8 @@ HTML_TEMPLATE = """<!doctype html>
           <h2>${escapeHtml(stripFcs(thread.label || thread.id))}</h2>
           <div class="chip">${escapeHtml(prettyCategory(thread.category))} | ${allMessages.length} timeline items</div>
         </div>
-        <div class="chips">
-          ${(thread.participants || []).map(name => `<div class="chip">${escapeHtml(stripFcs(name))}</div>`).join("")}
+        <div class="participant-cloud">
+          ${renderExpandableChipGroup(thread.participants || [], { emptyLabel: "No participants were resolved." })}
         </div>
         <div class="detail-toolbar">
           <div class="toolbar-row">
@@ -1901,13 +2138,14 @@ HTML_TEMPLATE = """<!doctype html>
               </div>
               ${(message.synthetic_call || message.message_type === "Event/Call")
                 ? renderCallEventBody(message)
-                : message.message_type === "ThreadActivity/AddMember"
-                  ? renderAddMemberEventBody(message, thread)
+                : isMembershipEvent(message)
+                  ? renderMembershipEventBody(message, thread)
                   : `<div class="body">${escapeHtml(message.content_text || "")}</div>`}
             </div>
           `).join("") || `<div class="empty">${hasThreadDateRange() ? "No timeline items match the current date range and filters." : "No messages in this conversation."}</div>`}
         </div>
       `;
+      initExpandableLists(contentPanel);
       [...contentPanel.querySelectorAll(".message-filter")].forEach(element => {
         element.addEventListener("click", () => {
           state.messageViewFilter = element.dataset.filter;
