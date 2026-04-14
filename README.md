@@ -2,6 +2,10 @@
 
 Repository name: `michaelsoft_teams`
 
+MS Teams sucks. And it doesn't let you archive any of your messages.
+
+So... I made my own archive app called Michaelsoft Teams!
+
 Michaelsoft Teams is a local Microsoft Teams artifact exporter and standalone browser viewer. It reads the newer Teams client IndexedDB profile, produces structured JSON and CSV exports, and builds a single-file HTML interface for reviewing messages, meetings, calls, and attachment references offline.
 
 ## Current Scope
