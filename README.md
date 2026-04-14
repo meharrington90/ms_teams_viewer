@@ -46,3 +46,7 @@ Main files created there:
 
 - Generated outputs can contain sensitive Teams data.
 - `.venv/`, `.tools/`, and generated outputs are excluded by `.gitignore`.
+
+## License
+
+MIT — see [LICENSE](./LICENSE)
