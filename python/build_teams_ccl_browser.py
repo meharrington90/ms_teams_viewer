@@ -616,6 +616,7 @@ HTML_TEMPLATE = """<!doctype html>
           <input id="callSearch" type="search" placeholder="Search calls, participants, direction, state">
           <select id="callDirectionFilter">
             <option value="">All calls</option>
+            <option value="meeting">Meetings</option>
             <option value="incoming">Incoming</option>
             <option value="outgoing">Outgoing</option>
             <option value="missed">Missed</option>
@@ -783,12 +784,35 @@ HTML_TEMPLATE = """<!doctype html>
       return items.length === 2 ? items.join("|") : "";
     }
 
+    function summarizeNames(values, maxVisible = 3) {
+      const items = dedupe((values || []).map(value => stripFcs(value)).filter(Boolean));
+      if (!items.length) return "";
+      if (items.length <= maxVisible) return items.join(" / ");
+      return `${items.slice(0, maxVisible).join(" / ")} + ${items.length - maxVisible} more`;
+    }
+
+    function callParticipantDisplayNames(call) {
+      return dedupe([
+        ...(call.participant_display_names || []),
+        call.originator_display_name,
+        call.target_display_name,
+      ].map(value => stripFcs(value)).filter(Boolean));
+    }
+
     function callParticipantIds(call) {
-      return dedupe([call.originator_id, call.target_id].map(normalizeGuid).filter(Boolean));
+      return dedupe([
+        ...(call.participant_ids || []),
+        call.originator_id,
+        call.target_id,
+      ].map(normalizeGuid).filter(Boolean));
     }
 
     function callParticipantNames(call) {
-      return dedupe([call.originator_display_name, call.target_display_name].map(normalizeName).filter(Boolean));
+      return dedupe([
+        ...(call.participant_display_names || []),
+        call.originator_display_name,
+        call.target_display_name,
+      ].map(normalizeName).filter(Boolean));
     }
 
     function callTimelineTimestamp(call) {
@@ -802,8 +826,31 @@ HTML_TEMPLATE = """<!doctype html>
       return Math.round((end - start) / 1000);
     }
 
+    function isMeetingCall(call) {
+      return String(call.direction || "").toLowerCase() === "meeting" ||
+        String(call.call_type || "").toLowerCase() === "meeting" ||
+        Boolean(call.meeting_subject || call.meeting_start_time || call.meeting_end_time);
+    }
+
+    function meetingParticipation(call) {
+      const value = String(call.user_participation || "").toLowerCase();
+      return value === "joined" || value === "missed" ? value : "";
+    }
+
+    function meetingCallTitle(call) {
+      const subject = stripFcs(call.meeting_subject || "").trim() || "Meeting";
+      const when = fmt(call.start_time || call.meeting_start_time || call.connect_time);
+      return when && when !== "[no_time]" ? `${subject} ${when}` : subject;
+    }
+
     function displayCallDirection(call) {
+      if (isMeetingCall(call)) return "meeting";
       return String(call.direction || "").toLowerCase();
+    }
+
+    function displayCallDirectionLabel(call) {
+      const direction = displayCallDirection(call);
+      return direction ? `${direction[0].toUpperCase()}${direction.slice(1)}` : "";
     }
 
     function shouldMarkMissed(call) {
@@ -816,13 +863,34 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function displayCallState(call) {
+      if (isMeetingCall(call)) return meetingParticipation(call) || "meeting";
       if (shouldMarkMissed(call)) return "missed";
       return String(call.call_state || "").toLowerCase();
     }
 
-    function displayCallStatus(call) {
-      const direction = displayCallDirection(call);
+    function displayCallStateLabel(call) {
       const state = displayCallState(call);
+      const labels = {
+        started: "Started",
+        ended: "Ended",
+        joined: "Joined",
+        meeting: "Meeting",
+        missed: "Missed",
+        accepted: "Accepted",
+        rejected: "Rejected",
+        cancelled: "Cancelled",
+      };
+      if (labels[state]) return labels[state];
+      return state ? prettyCallEventName(state) : "";
+    }
+
+    function displayCallStatus(call) {
+      if (isMeetingCall(call)) {
+        const participation = displayCallStateLabel(call);
+        return participation && participation !== "Meeting" ? `Meeting | ${participation}` : "Meeting";
+      }
+      const direction = displayCallDirectionLabel(call);
+      const state = displayCallStateLabel(call);
       if (direction && state) return `${direction} | ${state}`;
       return direction || state || "";
     }
@@ -1085,8 +1153,11 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function callLabel(call) {
-      const origin = call.originator_display_name || call.originator_id || "";
-      const target = call.target_display_name || call.target_id || "";
+      if (isMeetingCall(call)) return meetingCallTitle(call);
+      const participants = callParticipantDisplayNames(call);
+      if (participants.length) return summarizeNames(participants);
+      const origin = stripFcs(call.originator_display_name || call.originator_id || "");
+      const target = stripFcs(call.target_display_name || call.target_id || "");
       if (origin && target) return `${origin} -> ${target}`;
       return origin || target || call.summary_text || call.call_id || "[unknown call]";
     }
@@ -1096,10 +1167,18 @@ HTML_TEMPLATE = """<!doctype html>
         .map(match => match[0].toLowerCase());
     }
 
+    function eventCallGuid(text) {
+      const match = String(text || "").match(/\\b([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\\b(?:\\s+False)?\\s*$/i);
+      return match ? match[1].toLowerCase() : "";
+    }
+
     function findLinkedCall(message) {
       if (message.synthetic_call_key && CALLS_BY_KEY.has(message.synthetic_call_key)) {
         return CALLS_BY_KEY.get(message.synthetic_call_key);
       }
+      const eventGuid = eventCallGuid(message.content_text || "");
+      if (eventGuid && CALLS_BY_ID.has(eventGuid)) return CALLS_BY_ID.get(eventGuid);
+      if (eventGuid && CALLS_BY_SHARED.has(eventGuid)) return CALLS_BY_SHARED.get(eventGuid);
       const ids = extractGuids(message.content_text || "");
       for (const id of ids) {
         if (CALLS_BY_ID.has(id)) return CALLS_BY_ID.get(id);
@@ -1183,6 +1262,18 @@ HTML_TEMPLATE = """<!doctype html>
       return matches;
     }
 
+    function linkedCallsForThread(thread) {
+      const linked = new Map();
+      for (const message of thread.messages || []) {
+        const call = findLinkedCall(message);
+        if (call) linked.set(callKey(call), call);
+      }
+      for (const call of syntheticCallsForThread(thread)) {
+        linked.set(callKey(call), call);
+      }
+      return [...linked.values()].sort((left, right) => timeValue(callTimelineTimestamp(right)) - timeValue(callTimelineTimestamp(left)));
+    }
+
     function syntheticCallMessages(thread) {
       return syntheticCallsForThread(thread).map(call => ({
         id: `synthetic-call:${callKey(call)}`,
@@ -1204,11 +1295,9 @@ HTML_TEMPLATE = """<!doctype html>
       const participants = collectEventParticipants(message);
       const linkedKey = linkedCall ? callKey(linkedCall) : "";
       const visuals = callCardVisuals(message, linkedCall);
-      const syntheticParticipants = linkedCall
-        ? [linkedCall.originator_display_name, linkedCall.target_display_name].filter(Boolean).map(name => stripFcs(name)).join(" / ")
-        : "";
-      const participantLabel = message.synthetic_call
-        ? syntheticParticipants
+      const linkedParticipants = linkedCall ? callParticipantDisplayNames(linkedCall) : [];
+      const participantLabel = linkedParticipants.length
+        ? linkedParticipants.join(" / ")
         : (participants.length ? participants.map(name => stripFcs(name)).join(" / ") : "");
 
       return `
@@ -1222,8 +1311,8 @@ HTML_TEMPLATE = """<!doctype html>
           <div class="call-event-grid">
             <div class="call-event-block"><div class="k">Participants</div><div>${highlightSearchHtml(participantLabel || stripFcs(callLabel(linkedCall || {})))}</div></div>
             <div class="call-event-block"><div class="k">Call Type</div><div>${highlightSearchHtml(linkedCall ? (linkedCall.call_type || "") : "")}</div></div>
-            <div class="call-event-block"><div class="k">Direction</div><div>${highlightSearchHtml(linkedCall ? displayCallDirection(linkedCall) : "")}</div></div>
-            <div class="call-event-block"><div class="k">State</div><div>${highlightSearchHtml(linkedCall ? displayCallState(linkedCall) : eventName)}</div></div>
+            <div class="call-event-block"><div class="k">Direction</div><div>${highlightSearchHtml(linkedCall ? displayCallDirectionLabel(linkedCall) : "")}</div></div>
+            <div class="call-event-block"><div class="k">State</div><div>${highlightSearchHtml(linkedCall ? displayCallStateLabel(linkedCall) : eventName)}</div></div>
             <div class="call-event-block"><div class="k">Start Time</div><div>${escapeHtml(fmt(linkedCall ? linkedCall.start_time : message.timestamp))}</div></div>
             <div class="call-event-block"><div class="k">End Time</div><div>${escapeHtml(fmt(linkedCall ? linkedCall.end_time : null))}</div></div>
           </div>
@@ -1457,6 +1546,10 @@ HTML_TEMPLATE = """<!doctype html>
         call.call_type,
         call.conversation_id,
         call.summary_text,
+        call.meeting_subject,
+        call.meeting_start_time,
+        call.meeting_end_time,
+        call.user_participation,
         call.originator_display_name,
         call.originator_id,
         call.target_display_name,
@@ -1482,12 +1575,18 @@ HTML_TEMPLATE = """<!doctype html>
     function filteredCalls() {
       return DATA.calls
         .filter(call => {
-          if (state.callDirection === "missed") {
+          if (state.callDirection === "meeting") {
+            if (!isMeetingCall(call)) return false;
+          } else if (state.callDirection === "missed") {
+            if (isMeetingCall(call)) return false;
             if (displayCallState(call) !== "missed") return false;
-          } else if (state.callDirection && displayCallDirection(call) !== state.callDirection) {
+          } else if (state.callDirection) {
+            if (isMeetingCall(call)) return false;
+            if (displayCallDirection(call) !== state.callDirection) return false;
+          }
+          if (state.callSearch && !callSearchText(call).includes(state.callSearch)) {
             return false;
           }
-          if (state.callSearch && !callSearchText(call).includes(state.callSearch)) return false;
           return true;
         })
         .sort((left, right) => (right.start_time || "").localeCompare(left.start_time || ""));
@@ -1721,13 +1820,18 @@ HTML_TEMPLATE = """<!doctype html>
         return (right.id || "").localeCompare(left.id || "");
       });
       const rangeMessages = allMessages.filter(messagePassesDateRange);
-      const syntheticCallCount = allMessages.filter(message => message.synthetic_call).length;
+      const linkedCalls = linkedCallsForThread(thread);
+      const linkedCallCount = linkedCalls.length;
+      const meetingCall = linkedCalls.find(call => call.meeting_subject || call.meeting_start_time || call.meeting_end_time) || {};
       const messages = rangeMessages.filter(messagePassesFilter);
       const firstMessage = messages.length ? messages[messages.length - 1] : null;
       const lastMessage = messages[0] || null;
       const eventCount = messages.filter(message => message.quality === "event").length;
       const curatedCount = messages.filter(message => message.quality !== "event").length;
       const meeting = thread.meeting || {};
+      const meetingSubject = stripFcs(meeting.subject || meetingCall.meeting_subject || meta.topic || thread.label || "");
+      const meetingStart = meeting.startTime || meetingCall.meeting_start_time || "";
+      const meetingEnd = meeting.endTime || meetingCall.meeting_end_time || "";
       const showCompactChatMeta = ["chat_space", "thread"].includes(thread.category);
       contentPanel.innerHTML = `
         <div class="title">
@@ -1776,11 +1880,10 @@ HTML_TEMPLATE = """<!doctype html>
           <div class="meta-block"><div class="k">Metadata Quality</div><div>${escapeHtml(thread.metadata_quality || "")}</div></div>
           <div class="meta-block"><div class="k">Participants</div><div>${(thread.participants || []).length}</div></div>
           <div class="meta-block"><div class="k">Known Metadata</div><div>${Object.keys(meta).length}</div></div>
-          <div class="meta-block"><div class="k">Merged Calls</div><div>${escapeHtml(String(syntheticCallCount))}</div></div>
-          ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Subject</div><div>${escapeHtml(meeting.subject || "")}</div></div>`}
-          ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Window</div><div>${escapeHtml(meeting.startTime ? `${fmt(meeting.startTime)} to ${fmt(meeting.endTime)}` : "")}</div></div>`}
+          <div class="meta-block"><div class="k">Merged Calls</div><div>${escapeHtml(String(linkedCallCount))}</div></div>
+          ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Subject</div><div>${escapeHtml(meetingSubject)}</div></div>`}
+          ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Window</div><div>${escapeHtml(meetingStart ? `${fmt(meetingStart)} to ${fmt(meetingEnd)}` : "")}</div></div>`}
           <div class="meta-block"><div class="k">First Activity</div><div>${escapeHtml(fmt(firstMessage ? firstMessage.timestamp : null))}</div></div>
-          ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Latest Preview</div><div>${escapeHtml(latestThreadPreview(thread))}</div></div>`}
         </div>
         <div class="section-divider">
           <div class="section-label">Timeline</div>
@@ -1903,6 +2006,8 @@ HTML_TEMPLATE = """<!doctype html>
           contentPanel.innerHTML = `<div class="empty">Select a call to view its data.</div>`;
           return;
         }
+      const callParticipants = callParticipantDisplayNames(call);
+      const callMeetingWindow = call.meeting_start_time ? `${fmt(call.meeting_start_time)} to ${fmt(call.meeting_end_time)}` : "";
       const relatedThreads = preferredThreadsForCall(call);
       const jumpTargets = callJumpTargets(call);
       contentPanel.innerHTML = `
@@ -1933,14 +2038,16 @@ HTML_TEMPLATE = """<!doctype html>
           <div class="meta-block"><div class="k">Start Time</div><div>${escapeHtml(fmt(call.start_time))}</div></div>
           <div class="meta-block"><div class="k">Connect Time</div><div>${escapeHtml(fmt(call.connect_time))}</div></div>
           <div class="meta-block"><div class="k">End Time</div><div>${escapeHtml(fmt(call.end_time))}</div></div>
-          <div class="meta-block"><div class="k">Direction</div><div>${escapeHtml(displayCallDirection(call))}</div></div>
-          <div class="meta-block"><div class="k">State</div><div>${escapeHtml(displayCallState(call))}</div></div>
+          <div class="meta-block"><div class="k">Direction</div><div>${escapeHtml(displayCallDirectionLabel(call))}</div></div>
+          <div class="meta-block"><div class="k">State</div><div>${escapeHtml(displayCallStateLabel(call))}</div></div>
           <div class="meta-block"><div class="k">Type</div><div>${escapeHtml(call.call_type || "")}</div></div>
           <div class="meta-block"><div class="k">Originator</div><div>${escapeHtml(stripFcs(call.originator_display_name || call.originator_id || ""))}</div></div>
-          <div class="meta-block"><div class="k">Target</div><div>${escapeHtml(stripFcs(call.target_display_name || call.target_id || ""))}</div></div>
+          ${(call.target_display_name || call.target_id) ? `<div class="meta-block"><div class="k">Target</div><div>${escapeHtml(stripFcs(call.target_display_name || call.target_id || ""))}</div></div>` : ``}
           <div class="meta-block"><div class="k">Call Id</div><div class="mono">${escapeHtml(call.call_id || "")}</div></div>
-          <div class="meta-block"><div class="k">Shared Correlation Id</div><div class="mono">${escapeHtml(call.shared_correlation_id || "")}</div></div>
-          <div class="meta-block"><div class="k">Participants</div><div>${escapeHtml(stripFcs(callLabel(call)))}</div></div>
+          ${call.shared_correlation_id ? `<div class="meta-block"><div class="k">Shared Correlation Id</div><div class="mono">${escapeHtml(call.shared_correlation_id || "")}</div></div>` : ``}
+          <div class="meta-block"><div class="k">Participants</div><div>${escapeHtml(callParticipants.length ? callParticipants.join(" / ") : stripFcs(callLabel(call)))}</div></div>
+          ${call.meeting_subject ? `<div class="meta-block"><div class="k">Meeting Subject</div><div>${escapeHtml(stripFcs(call.meeting_subject || ""))}</div></div>` : ``}
+          ${callMeetingWindow ? `<div class="meta-block"><div class="k">Meeting Window</div><div>${escapeHtml(callMeetingWindow)}</div></div>` : ``}
           <div class="meta-block"><div class="k">Summary</div><div>${escapeHtml(call.summary_text || "")}</div></div>
         </div>
         <div class="section-label">Open Conversation At Call Time</div>

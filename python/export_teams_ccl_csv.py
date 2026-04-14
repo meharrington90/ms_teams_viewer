@@ -126,12 +126,24 @@ def export_calls(export_data: dict, output_dir: Path) -> None:
         "originator_id",
         "target_display_name",
         "target_id",
+        "participant_display_names",
+        "participant_ids",
         "conversation_id",
+        "meeting_subject",
+        "meeting_start_time",
+        "meeting_end_time",
+        "meeting_series_kind",
         "quality",
         "summary_text",
         "source",
     ]
-    write_csv(output_dir / "call_history.csv", fields, export_data.get("calls", []))
+    rows = []
+    for call in export_data.get("calls", []):
+        row = {field: call.get(field) for field in fields}
+        row["participant_display_names"] = "; ".join(call.get("participant_display_names", []))
+        row["participant_ids"] = "; ".join(call.get("participant_ids", []))
+        rows.append(row)
+    write_csv(output_dir / "call_history.csv", fields, rows)
 
 
 def main() -> None:

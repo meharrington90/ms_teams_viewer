@@ -3,8 +3,9 @@
 import argparse
 import io
 import json
+import re
 from contextlib import ExitStack, contextmanager, redirect_stderr, redirect_stdout
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dump_teams_indexeddb_ccl import iter_wrapper_databases, load_ccl, resolve_teams_source
@@ -17,6 +18,36 @@ from teams_ccl_common import (
     normalize_thread_id,
     parse_profile,
 )
+
+EVENT_CALL_NAME_RE = re.compile(r"\b(callStarted|callEnded|callMissed|callAccepted|callRejected|callCancelled)\b", re.I)
+EVENT_CALL_TRAILING_GUID_RE = re.compile(
+    r"\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b(?:\s+False)?\s*$",
+    re.I,
+)
+EVENT_CALL_TIME_RE = re.compile(r"\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}(?: \+\d{2}:\d{2})?")
+EVENT_CALL_URL_RE = re.compile(r"https://\S+")
+EVENT_CALL_SERIES_KIND_RE = re.compile(r"(Occurrence|Exception|RecurringMaster|Recurring)\s*$", re.I)
+EVENT_CALL_PARTICIPANT_RE = re.compile(
+    r"8:orgid:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\s+(.+?)\s+(\d+)"
+    r"(?=\s+8:orgid:|\s+[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|\s+\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}|\s*$)",
+    re.I,
+)
+EVENT_CALL_STATE_MAP = {
+    "callstarted": "started",
+    "callended": "ended",
+    "callmissed": "missed",
+    "callaccepted": "accepted",
+    "callrejected": "rejected",
+    "callcancelled": "cancelled",
+}
+EVENT_CALL_STATE_PRIORITY = {
+    "started": 0,
+    "accepted": 1,
+    "ended": 2,
+    "missed": 2,
+    "rejected": 2,
+    "cancelled": 2,
+}
 
 
 def safe_text(value) -> str | None:
@@ -47,6 +78,17 @@ def extract_guid(value: str | None) -> str | None:
     if not match:
         return None
     return match.group(0).lower()
+
+
+def extract_guids(value: str | None) -> list[str]:
+    if not value:
+        return []
+    seen = []
+    for match in GUID_RE.finditer(value):
+        guid = match.group(0).lower()
+        if guid not in seen:
+            seen.append(guid)
+    return seen
 
 
 def classify_quality(message_type: str | None, content_text: str | None) -> str:
@@ -99,6 +141,324 @@ def parse_embedded_json(value):
         if isinstance(parsed, dict):
             return parsed
     return None
+
+
+def to_iso_from_datetime_text(value: str | None) -> str | None:
+    cleaned = clean_text(value)
+    if not cleaned:
+        return None
+    for fmt in ("%m/%d/%Y %H:%M:%S %z", "%m/%d/%Y %H:%M:%S"):
+        try:
+            parsed = datetime.strptime(cleaned, fmt)
+        except ValueError:
+            continue
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc).isoformat()
+    return None
+
+
+def merge_unique_strings(existing: list[str] | None, values: list[str] | None) -> list[str]:
+    merged = []
+    for value in [*(existing or []), *(values or [])]:
+        cleaned = clean_text(value)
+        if cleaned and cleaned not in merged:
+            merged.append(cleaned)
+    return merged
+
+
+def call_state_priority(value: str | None) -> int:
+    return EVENT_CALL_STATE_PRIORITY.get((clean_text(value) or "").lower(), -1)
+
+
+def parse_iso_datetime(value: str | None) -> datetime | None:
+    cleaned = clean_text(value)
+    if not cleaned:
+        return None
+    try:
+        return datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def parse_event_call_message(message: dict, thread: dict, guid_to_name: dict[str, str]) -> dict | None:
+    if message.get("message_type") != "Event/Call":
+        return None
+
+    content_text = message.get("content_text") or ""
+    event_match = EVENT_CALL_NAME_RE.search(content_text)
+    if not event_match:
+        return None
+
+    raw_event_name = event_match.group(1)
+    call_state = EVENT_CALL_STATE_MAP.get(raw_event_name.lower(), clean_text(raw_event_name))
+
+    call_guid_match = EVENT_CALL_TRAILING_GUID_RE.search(content_text)
+    call_id = call_guid_match.group(1).lower() if call_guid_match else clean_text(message.get("id"))
+    if not call_id:
+        return None
+
+    meeting = thread.get("meeting") or {}
+    metadata = thread.get("metadata") or {}
+    time_tokens = EVENT_CALL_TIME_RE.findall(content_text)
+    occurrence_start = to_iso_from_datetime_text(time_tokens[-3]) if len(time_tokens) >= 3 else None
+    occurrence_end = to_iso_from_datetime_text(time_tokens[-2]) if len(time_tokens) >= 2 else None
+    event_start = to_iso_from_datetime_text(time_tokens[-1]) if time_tokens else None
+
+    before_event = content_text[:event_match.start()].strip()
+    series_kind_match = EVENT_CALL_SERIES_KIND_RE.search(before_event)
+    series_kind = clean_text(series_kind_match.group(1)) if series_kind_match else None
+    subject_source = before_event[:series_kind_match.start()].rstrip() if series_kind_match else before_event
+    subject = None
+    if len(time_tokens) >= 4:
+        anchor = time_tokens[-2]
+        index = subject_source.rfind(anchor)
+        if index != -1:
+            subject = clean_text(subject_source[index + len(anchor):])
+    if not subject:
+        subject = clean_text(meeting.get("subject")) or clean_text(metadata.get("topic")) or clean_text(thread.get("label"))
+
+    is_meeting_call = thread.get("category") in {"team_chat", "meeting"} or bool(meeting) or bool(series_kind)
+    participant_ids = []
+    participant_names = []
+    participant_sessions = []
+    for participant_id, participant_name, duration_text in EVENT_CALL_PARTICIPANT_RE.findall(content_text):
+        guid = extract_guid(participant_id)
+        name = clean_text(participant_name)
+        if guid and guid not in participant_ids:
+            participant_ids.append(guid)
+        if name and name not in participant_names:
+            participant_names.append(name)
+        if guid and name:
+            guid_to_name.setdefault(guid, name)
+        try:
+            duration_seconds = int(duration_text)
+        except ValueError:
+            duration_seconds = None
+        participant_sessions.append(
+            {
+                key: value
+                for key, value in {
+                    "id": guid,
+                    "display_name": name,
+                    "duration_seconds": duration_seconds,
+                }.items()
+                if value not in {None, ""}
+            }
+        )
+    for guid in extract_guids(content_text):
+        if guid == call_id:
+            continue
+        name = guid_to_name.get(guid)
+        if not name:
+            continue
+        if guid not in participant_ids:
+            participant_ids.append(guid)
+        if name not in participant_names:
+            participant_names.append(name)
+
+    originator_id = extract_guid(message.get("sender_id"))
+    originator_name = clean_text(message.get("sender_display_name")) or (guid_to_name.get(originator_id) if originator_id else None)
+    if originator_id and originator_name:
+        if originator_id not in participant_ids:
+            participant_ids.insert(0, originator_id)
+        if originator_name not in participant_names:
+            participant_names.insert(0, originator_name)
+
+    other_participants = [
+        (participant_ids[index], participant_names[index])
+        for index in range(min(len(participant_ids), len(participant_names)))
+        if participant_ids[index] != originator_id
+    ]
+    target_id = other_participants[0][0] if not is_meeting_call and len(participant_names) <= 2 and other_participants else None
+    target_name = other_participants[0][1] if not is_meeting_call and len(participant_names) <= 2 and other_participants else None
+    event_url_match = EVENT_CALL_URL_RE.search(content_text)
+
+    call = {
+        "call_id": call_id,
+        "start_time": event_start or message.get("timestamp"),
+        "connect_time": event_start if call_state == "accepted" else None,
+        "end_time": message.get("timestamp") if call_state in {"ended", "missed", "rejected", "cancelled"} else None,
+        "direction": "meeting" if is_meeting_call else None,
+        "call_type": "Meeting" if is_meeting_call else ("Group" if len(participant_names) > 2 else "TwoParty"),
+        "call_state": call_state,
+        "originator_display_name": originator_name,
+        "originator_id": originator_id,
+        "target_display_name": target_name,
+        "target_id": target_id,
+        "conversation_id": thread.get("id"),
+        "quality": "thread_event_inferred",
+        "source": "ccl:replychains:event_call",
+        "summary_text": clean_text(f"{subject or thread.get('label') or 'Meeting call'} meeting call"),
+        "participant_ids": participant_ids,
+        "participant_display_names": participant_names,
+        "participant_sessions": participant_sessions,
+        "meeting_subject": subject,
+        "meeting_start_time": occurrence_start or clean_text(meeting.get("startTime")),
+        "meeting_end_time": occurrence_end or clean_text(meeting.get("endTime")),
+        "meeting_series_kind": series_kind,
+        "source_event_message_ids": [message.get("id")] if message.get("id") else [],
+        "event_url": safe_text(event_url_match.group(0)) if event_url_match else None,
+    }
+    return {
+        field: value
+        for field, value in call.items()
+        if value is not None and value != "" and value != []
+    }
+
+
+def merge_call_records(existing: dict, candidate: dict) -> None:
+    for field in [
+        "conversation_id",
+        "direction",
+        "call_type",
+        "originator_display_name",
+        "originator_id",
+        "target_display_name",
+        "target_id",
+        "meeting_subject",
+        "meeting_start_time",
+        "meeting_end_time",
+        "meeting_series_kind",
+        "event_url",
+        "summary_text",
+    ]:
+        if candidate.get(field) and not existing.get(field):
+            existing[field] = candidate[field]
+
+    if candidate.get("start_time"):
+        if not existing.get("start_time") or candidate["start_time"] < existing["start_time"]:
+            existing["start_time"] = candidate["start_time"]
+    if candidate.get("connect_time") and not existing.get("connect_time"):
+        existing["connect_time"] = candidate["connect_time"]
+    if candidate.get("end_time"):
+        if not existing.get("end_time") or candidate["end_time"] > existing["end_time"]:
+            existing["end_time"] = candidate["end_time"]
+
+    if call_state_priority(candidate.get("call_state")) >= call_state_priority(existing.get("call_state")):
+        existing["call_state"] = candidate.get("call_state")
+
+    for list_field in ["participant_ids", "participant_display_names", "source_event_message_ids"]:
+        merged = merge_unique_strings(existing.get(list_field), candidate.get(list_field))
+        if merged:
+            existing[list_field] = merged
+    candidate_sessions = candidate.get("participant_sessions") or []
+    existing_sessions = existing.get("participant_sessions") or []
+    if candidate_sessions and len(candidate_sessions) >= len(existing_sessions):
+        existing["participant_sessions"] = candidate_sessions
+
+    if candidate.get("quality") and not existing.get("quality"):
+        existing["quality"] = candidate["quality"]
+    if candidate.get("source") and not existing.get("source"):
+        existing["source"] = candidate["source"]
+
+
+def merge_thread_event_calls(calls: list[dict], threads: dict[str, dict], guid_to_name: dict[str, str]) -> None:
+    inferred_calls: dict[str, dict] = {}
+    for thread in threads.values():
+        for message in thread.get("messages", []):
+            candidate = parse_event_call_message(message, thread, guid_to_name)
+            if not candidate:
+                continue
+            key = candidate.get("call_id") or candidate.get("shared_correlation_id") or f"{thread.get('id')}|{message.get('id') or message.get('timestamp')}"
+            existing = inferred_calls.get(key)
+            if existing is None:
+                inferred_calls[key] = candidate
+                continue
+            merge_call_records(existing, candidate)
+
+    calls_by_call_id = {(call.get("call_id") or "").lower(): call for call in calls if call.get("call_id")}
+    calls_by_shared = {
+        (call.get("shared_correlation_id") or "").lower(): call
+        for call in calls
+        if call.get("shared_correlation_id")
+    }
+    for candidate in inferred_calls.values():
+        existing = None
+        call_id = (candidate.get("call_id") or "").lower()
+        shared_correlation_id = (candidate.get("shared_correlation_id") or "").lower()
+        if call_id:
+            existing = calls_by_call_id.get(call_id)
+        if existing is None and shared_correlation_id:
+            existing = calls_by_shared.get(shared_correlation_id)
+        if existing is not None:
+            merge_call_records(existing, candidate)
+            continue
+        calls.append(candidate)
+
+
+def normalize_name_key(value: str | None) -> str | None:
+    cleaned = clean_text(value)
+    return cleaned.lower() if cleaned else None
+
+
+def enrich_calls_for_current_user(calls: list[dict], current_user_oid: str | None, current_user_name: str | None) -> None:
+    current_oid = extract_guid(current_user_oid)
+    current_name = normalize_name_key(current_user_name)
+    if not current_oid and not current_name:
+        return
+
+    for call in calls:
+        is_meeting_call = (clean_text(call.get("call_type")) or "").lower() == "meeting" or bool(clean_text(call.get("meeting_subject")))
+        if not is_meeting_call:
+            continue
+
+        call["call_type"] = "Meeting"
+        call["direction"] = "meeting"
+
+        participant_ids = set()
+        for raw_guid in [*(call.get("participant_ids") or []), call.get("originator_id"), call.get("target_id")]:
+            guid = extract_guid(raw_guid)
+            if guid:
+                participant_ids.add(guid)
+
+        participant_names = set()
+        for raw_name in [*(call.get("participant_display_names") or []), call.get("originator_display_name"), call.get("target_display_name")]:
+            name = normalize_name_key(raw_name)
+            if name:
+                participant_names.add(name)
+
+        matched_session = None
+        for session in call.get("participant_sessions") or []:
+            session_id = extract_guid(session.get("id"))
+            session_name = normalize_name_key(session.get("display_name"))
+            if (current_oid and session_id == current_oid) or (current_name and session_name == current_name):
+                matched_session = session
+                break
+
+        joined = False
+        if matched_session is not None:
+            joined = True
+        elif current_oid and current_oid in participant_ids:
+            joined = True
+        elif current_name and current_name in participant_names:
+            joined = True
+
+        has_attendance_roster = bool(call.get("participant_sessions"))
+        if joined:
+            call["user_participation"] = "joined"
+        elif has_attendance_roster or (clean_text(call.get("call_state")) or "").lower() == "missed":
+            call["user_participation"] = "missed"
+
+        if call.get("connect_time"):
+            continue
+
+        duration_seconds = matched_session.get("duration_seconds") if isinstance(matched_session, dict) else None
+        if isinstance(duration_seconds, int) and duration_seconds >= 0:
+            end_time = parse_iso_datetime(call.get("end_time"))
+            if end_time is None:
+                continue
+            connect_time = end_time - timedelta(seconds=duration_seconds)
+            start_time = parse_iso_datetime(call.get("start_time"))
+            if start_time and connect_time < start_time:
+                connect_time = start_time
+            call["connect_time"] = connect_time.isoformat()
+            continue
+
+        originator_id = extract_guid(call.get("originator_id"))
+        originator_name = normalize_name_key(call.get("originator_display_name"))
+        if ((current_oid and originator_id == current_oid) or (current_name and originator_name == current_name)) and call.get("start_time"):
+            call["connect_time"] = call["start_time"]
 
 
 def is_placeholder_label(label: str | None, thread_id: str) -> bool:
@@ -219,8 +579,8 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
                     for source, dest in mapping.items():
                         if source in thread_properties:
                             metadata[dest] = thread_properties[source]
-                    if isinstance(thread_properties.get("meeting"), dict):
-                        meeting = thread_properties["meeting"]
+                    meeting = parse_embedded_json(thread_properties.get("meeting"))
+                    if isinstance(meeting, dict):
                         thread["meeting"] = {
                             "subject": meeting.get("subject"),
                             "startTime": meeting.get("startTime"),
@@ -504,6 +864,9 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
         thread["message_count"] = len(thread["messages"])
         thread["participants"] = sorted(set(thread.get("participants", [])))
         thread["participant_ids"] = sorted(set(thread.get("participant_ids", [])))
+
+    merge_thread_event_calls(calls, threads, guid_to_name)
+    enrich_calls_for_current_user(calls, current_user_oid, current_user_name)
 
     ordered_threads = sorted(
         threads.values(),
