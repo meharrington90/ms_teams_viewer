@@ -27,6 +27,10 @@ EVENT_CALL_TRAILING_GUID_RE = re.compile(
 EVENT_CALL_TIME_RE = re.compile(r"\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}(?: \+\d{2}:\d{2})?")
 EVENT_CALL_URL_RE = re.compile(r"https://\S+")
 EVENT_CALL_SERIES_KIND_RE = re.compile(r"(Occurrence|Exception|RecurringMaster|Recurring)\s*$", re.I)
+GENERIC_PHONE_LABEL_RE = re.compile(
+    r"^(?:WIRELESS CALLER|STATE[_ ]OF[_ ]ALASKA|UNKNOWN CALLER|ANONYMOUS|PRIVATE CALLER|EXTERNAL CALLER)$",
+    re.I,
+)
 EVENT_CALL_PARTICIPANT_RE = re.compile(
     r"8:orgid:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\s+(.+?)\s+(\d+)"
     r"(?=\s+8:orgid:|\s+[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|\s+\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}|\s*$)",
@@ -183,6 +187,108 @@ def parse_iso_datetime(value: str | None) -> datetime | None:
         return None
 
 
+def normalize_meeting_datetime_value(value: str | None) -> str | None:
+    cleaned = safe_text(value)
+    if not cleaned:
+        return None
+    if cleaned.startswith("0001-01-01"):
+        return None
+    parsed = parse_iso_datetime(cleaned)
+    if parsed is not None and parsed.year <= 1:
+        return None
+    return cleaned
+
+
+def normalize_phone_number(value: str | None) -> str | None:
+    cleaned = safe_text(value)
+    if not cleaned:
+        return None
+    cleaned = re.sub(r"^(?:4:|tel:)", "", cleaned, flags=re.I)
+    if re.search(r"[A-Za-z]", cleaned):
+        return None
+    if not re.fullmatch(r"[+()0-9 .-]{7,}", cleaned):
+        return None
+    digits = re.sub(r"[(). -]+", "", cleaned)
+    if not digits:
+        return None
+    if digits.startswith("+"):
+        digits = f"+{re.sub(r'[^0-9]', '', digits)}"
+    else:
+        digits = re.sub(r"[^0-9]", "", digits)
+    digits_only = digits.lstrip("+")
+    if not digits_only.isdigit() or len(digits_only) < 7:
+        return None
+    return digits
+
+
+def format_phone_number(value: str | None) -> str | None:
+    normalized = normalize_phone_number(value)
+    if not normalized:
+        return None
+    digits = normalized.lstrip("+")
+    if len(digits) == 10:
+        return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
+    if len(digits) == 11 and digits.startswith("1"):
+        local = digits[1:]
+        return f"+1 ({local[:3]}) {local[3:6]}-{local[6:]}"
+    return normalized
+
+
+def is_generic_phone_label(value: str | None) -> bool:
+    cleaned = clean_text(value)
+    if not cleaned:
+        return False
+    return bool(GENERIC_PHONE_LABEL_RE.match(cleaned))
+
+
+def participant_phone_number(participant: dict | None, *fallback_values: str | None) -> str | None:
+    values = []
+    if isinstance(participant, dict):
+        values.extend(
+            [
+                participant.get("phoneNumber"),
+                participant.get("telephoneNumber"),
+                participant.get("alternateId"),
+                participant.get("id"),
+            ]
+        )
+    values.extend(fallback_values)
+    for value in values:
+        formatted = format_phone_number(value)
+        if formatted:
+            return formatted
+    return None
+
+
+def participant_label(display_name: str | None, phone_number: str | None) -> str | None:
+    cleaned_name = clean_text(display_name)
+    if phone_number and (not cleaned_name or is_generic_phone_label(cleaned_name)):
+        return phone_number
+    return cleaned_name or phone_number
+
+
+def collect_call_participants(participants: list[dict] | None, guid_to_name: dict[str, str]) -> tuple[list[str], list[str]]:
+    participant_ids: list[str] = []
+    participant_names: list[str] = []
+    for participant in participants or []:
+        if not isinstance(participant, dict):
+            continue
+        endpoint = safe_text(participant.get("id")) or safe_text(participant.get("alternateId"))
+        guid = extract_guid(endpoint)
+        phone_number = participant_phone_number(participant)
+        display_name = participant_label(
+            safe_text(participant.get("displayName")) or (guid_to_name.get(guid) if guid else None),
+            phone_number,
+        )
+        if guid and display_name:
+            guid_to_name.setdefault(guid, display_name)
+        if guid and guid not in participant_ids:
+            participant_ids.append(guid)
+        if display_name and display_name not in participant_names:
+            participant_names.append(display_name)
+    return participant_ids, participant_names
+
+
 def parse_event_call_message(message: dict, thread: dict, guid_to_name: dict[str, str]) -> dict | None:
     if message.get("message_type") != "Event/Call":
         return None
@@ -203,9 +309,11 @@ def parse_event_call_message(message: dict, thread: dict, guid_to_name: dict[str
     meeting = thread.get("meeting") or {}
     metadata = thread.get("metadata") or {}
     time_tokens = EVENT_CALL_TIME_RE.findall(content_text)
-    occurrence_start = to_iso_from_datetime_text(time_tokens[-3]) if len(time_tokens) >= 3 else None
-    occurrence_end = to_iso_from_datetime_text(time_tokens[-2]) if len(time_tokens) >= 2 else None
+    occurrence_start = normalize_meeting_datetime_value(to_iso_from_datetime_text(time_tokens[-3])) if len(time_tokens) >= 3 else None
+    occurrence_end = normalize_meeting_datetime_value(to_iso_from_datetime_text(time_tokens[-2])) if len(time_tokens) >= 2 else None
     event_start = to_iso_from_datetime_text(time_tokens[-1]) if time_tokens else None
+    thread_meeting_start = normalize_meeting_datetime_value(clean_text(meeting.get("startTime")))
+    thread_meeting_end = normalize_meeting_datetime_value(clean_text(meeting.get("endTime")))
 
     before_event = content_text[:event_match.start()].strip()
     series_kind_match = EVENT_CALL_SERIES_KIND_RE.search(before_event)
@@ -220,7 +328,15 @@ def parse_event_call_message(message: dict, thread: dict, guid_to_name: dict[str
     if not subject:
         subject = clean_text(meeting.get("subject")) or clean_text(metadata.get("topic")) or clean_text(thread.get("label"))
 
-    is_meeting_call = thread.get("category") in {"team_chat", "meeting"} or bool(meeting) or bool(series_kind)
+    conversation_type = (clean_text(metadata.get("conversation_type")) or "").lower()
+    thread_type = (clean_text(metadata.get("thread_type")) or "").lower()
+    is_meeting_thread = (
+        thread.get("category") in {"team_chat", "meeting"}
+        or conversation_type == "meeting"
+        or thread_type == "meeting"
+    )
+    has_real_meeting_window = bool(occurrence_start or occurrence_end or thread_meeting_start or thread_meeting_end)
+    is_meeting_call = is_meeting_thread or bool(series_kind) or has_real_meeting_window
     participant_ids = []
     participant_names = []
     participant_sessions = []
@@ -275,6 +391,7 @@ def parse_event_call_message(message: dict, thread: dict, guid_to_name: dict[str
     target_id = other_participants[0][0] if not is_meeting_call and len(participant_names) <= 2 and other_participants else None
     target_name = other_participants[0][1] if not is_meeting_call and len(participant_names) <= 2 and other_participants else None
     event_url_match = EVENT_CALL_URL_RE.search(content_text)
+    summary_label = subject or clean_text(thread.get("label")) or "Call"
 
     call = {
         "call_id": call_id,
@@ -291,14 +408,14 @@ def parse_event_call_message(message: dict, thread: dict, guid_to_name: dict[str
         "conversation_id": thread.get("id"),
         "quality": "thread_event_inferred",
         "source": "ccl:replychains:event_call",
-        "summary_text": clean_text(f"{subject or thread.get('label') or 'Meeting call'} meeting call"),
+        "summary_text": clean_text(f"{summary_label} {'meeting ' if is_meeting_call else ''}call"),
         "participant_ids": participant_ids,
         "participant_display_names": participant_names,
         "participant_sessions": participant_sessions,
-        "meeting_subject": subject,
-        "meeting_start_time": occurrence_start or clean_text(meeting.get("startTime")),
-        "meeting_end_time": occurrence_end or clean_text(meeting.get("endTime")),
-        "meeting_series_kind": series_kind,
+        "meeting_subject": subject if is_meeting_call else None,
+        "meeting_start_time": (occurrence_start or thread_meeting_start) if is_meeting_call else None,
+        "meeting_end_time": (occurrence_end or thread_meeting_end) if is_meeting_call else None,
+        "meeting_series_kind": series_kind if is_meeting_call else None,
         "source_event_message_ids": [message.get("id")] if message.get("id") else [],
         "event_url": safe_text(event_url_match.group(0)) if event_url_match else None,
     }
@@ -316,8 +433,13 @@ def merge_call_records(existing: dict, candidate: dict) -> None:
         "call_type",
         "originator_display_name",
         "originator_id",
+        "originator_endpoint",
+        "originator_phone_number",
         "target_display_name",
         "target_id",
+        "target_endpoint",
+        "target_phone_number",
+        "group_chat_thread_id",
         "meeting_subject",
         "meeting_start_time",
         "meeting_end_time",
@@ -394,6 +516,18 @@ def normalize_name_key(value: str | None) -> str | None:
     return cleaned.lower() if cleaned else None
 
 
+def call_has_meeting_context(call: dict) -> bool:
+    for thread_id in [call.get("conversation_id"), call.get("group_chat_thread_id")]:
+        normalized_thread_id = normalize_thread_id(thread_id)
+        if normalized_thread_id and classify_thread(normalized_thread_id) == "team_chat":
+            return True
+    if clean_text(call.get("meeting_series_kind")):
+        return True
+    if normalize_meeting_datetime_value(call.get("meeting_start_time")) or normalize_meeting_datetime_value(call.get("meeting_end_time")):
+        return True
+    return False
+
+
 def enrich_calls_for_current_user(calls: list[dict], current_user_oid: str | None, current_user_name: str | None) -> None:
     current_oid = extract_guid(current_user_oid)
     current_name = normalize_name_key(current_user_name)
@@ -401,7 +535,7 @@ def enrich_calls_for_current_user(calls: list[dict], current_user_oid: str | Non
         return
 
     for call in calls:
-        is_meeting_call = (clean_text(call.get("call_type")) or "").lower() == "meeting" or bool(clean_text(call.get("meeting_subject")))
+        is_meeting_call = call_has_meeting_context(call)
         if not is_meeting_call:
             continue
 
@@ -624,14 +758,28 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
 
                         originator = (call_log or {}).get("originatorParticipant") or {}
                         target = (call_log or {}).get("targetParticipant") or {}
-                        originator_id = extract_guid(originator.get("id")) or extract_guid((call_log or {}).get("originator"))
-                        target_id = extract_guid(target.get("id")) or extract_guid((call_log or {}).get("target"))
-                        originator_name = safe_text(originator.get("displayName")) or (guid_to_name.get(originator_id) if originator_id else None)
-                        target_name = safe_text(target.get("displayName")) or (guid_to_name.get(target_id) if target_id else None)
+                        originator_endpoint = safe_text(originator.get("id")) or safe_text((call_log or {}).get("originator"))
+                        target_endpoint = safe_text(target.get("id")) or safe_text((call_log or {}).get("target"))
+                        originator_id = extract_guid(originator_endpoint)
+                        target_id = extract_guid(target_endpoint)
+                        originator_phone_number = participant_phone_number(originator, (call_log or {}).get("originator"))
+                        target_phone_number = participant_phone_number(target, (call_log or {}).get("target"))
+                        originator_name = participant_label(
+                            safe_text(originator.get("displayName")) or (guid_to_name.get(originator_id) if originator_id else None),
+                            originator_phone_number,
+                        )
+                        target_name = participant_label(
+                            safe_text(target.get("displayName")) or (guid_to_name.get(target_id) if target_id else None),
+                            target_phone_number,
+                        )
                         if originator_id and originator_name:
                             guid_to_name.setdefault(originator_id, originator_name)
                         if target_id and target_name:
                             guid_to_name.setdefault(target_id, target_name)
+                        participant_ids, participant_names = collect_call_participants(
+                            [originator, target, *((call_log or {}).get("participantList") or [])],
+                            guid_to_name,
+                        )
 
                         call_id = safe_text((call_log or {}).get("callId")) or extract_guid(content_text) or extract_guid(message_id)
                         timestamp = to_iso_from_millis(raw.get("originalArrivalTime") or raw.get("clientArrivalTime") or value.get("latestDeliveryTime"))
@@ -651,14 +799,25 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
                             "call_state": safe_text((call_log or {}).get("callState")) or safe_text(raw.get("messageType")) or "calllog",
                             "originator_display_name": originator_name,
                             "originator_id": originator_id,
+                            "originator_endpoint": originator_endpoint,
+                            "originator_phone_number": originator_phone_number,
                             "target_display_name": target_name,
                             "target_id": target_id,
+                            "target_endpoint": target_endpoint,
+                            "target_phone_number": target_phone_number,
+                            "participant_ids": participant_ids,
+                            "participant_display_names": participant_names,
                             "conversation_id": safe_text((call_log or {}).get("threadId")) or thread_id,
+                            "group_chat_thread_id": safe_text((call_log or {}).get("groupChatThreadId")),
                             "quality": "calllog_enriched" if call_log else "calllog",
                             "source": "ccl:replychains:48:calllogs",
                             "summary_text": content_text,
                         }
-                        candidate = {name: field for name, field in candidate.items() if field not in {None, ""}}
+                        candidate = {
+                            name: field
+                            for name, field in candidate.items()
+                            if field is not None and field != "" and field != []
+                        }
 
                         existing = calllog_calls.get(key)
                         score = sum(
@@ -760,14 +919,28 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
                 value = record.value or {}
                 originator = value.get("originatorParticipant") or {}
                 target = value.get("targetParticipant") or {}
-                originator_id = extract_guid(originator.get("id"))
-                target_id = extract_guid(target.get("id"))
-                originator_name = safe_text(originator.get("displayName")) or (guid_to_name.get(originator_id) if originator_id else None)
-                target_name = safe_text(target.get("displayName")) or (guid_to_name.get(target_id) if target_id else None)
+                originator_endpoint = safe_text(originator.get("id"))
+                target_endpoint = safe_text(target.get("id"))
+                originator_id = extract_guid(originator_endpoint)
+                target_id = extract_guid(target_endpoint)
+                originator_phone_number = participant_phone_number(originator)
+                target_phone_number = participant_phone_number(target)
+                originator_name = participant_label(
+                    safe_text(originator.get("displayName")) or (guid_to_name.get(originator_id) if originator_id else None),
+                    originator_phone_number,
+                )
+                target_name = participant_label(
+                    safe_text(target.get("displayName")) or (guid_to_name.get(target_id) if target_id else None),
+                    target_phone_number,
+                )
                 if originator_id and originator_name:
                     guid_to_name.setdefault(originator_id, originator_name)
                 if target_id and target_name:
                     guid_to_name.setdefault(target_id, target_name)
+                participant_ids, participant_names = collect_call_participants(
+                    [originator, target, *(value.get("participantList") or [])],
+                    guid_to_name,
+                )
 
                 calls.append(
                     {
@@ -781,9 +954,16 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
                         "call_state": safe_text(value.get("callState")),
                         "originator_display_name": originator_name,
                         "originator_id": originator_id,
+                        "originator_endpoint": originator_endpoint,
+                        "originator_phone_number": originator_phone_number,
                         "target_display_name": target_name,
                         "target_id": target_id,
+                        "target_endpoint": target_endpoint,
+                        "target_phone_number": target_phone_number,
+                        "participant_ids": participant_ids,
+                        "participant_display_names": participant_names,
                         "conversation_id": safe_text(value.get("conversationId")),
+                        "group_chat_thread_id": safe_text(value.get("groupChatThreadId")),
                         "quality": "structured",
                         "source": "ccl:call-history",
                     }
@@ -856,9 +1036,9 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
                     break
 
         if is_placeholder_label(thread.get("label"), thread_id):
-            participant_label = build_participant_label(thread.get("participants", []), current_user_name)
-            if participant_label:
-                thread["label"] = participant_label
+            participant_list_label = build_participant_label(thread.get("participants", []), current_user_name)
+            if participant_list_label:
+                thread["label"] = participant_list_label
 
         if is_placeholder_label(thread.get("label"), thread_id):
             thread["label"] = thread_id
