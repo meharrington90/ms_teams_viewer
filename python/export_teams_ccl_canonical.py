@@ -113,6 +113,8 @@ def flatten_members(members: list[dict], guid_to_name: dict[str, str]) -> tuple[
         name_hint = member.get("nameHint") or {}
         if isinstance(name_hint, dict):
             display_name = clean_text(name_hint.get("displayName"))
+        if guid and display_name:
+            guid_to_name.setdefault(guid, display_name)
         if not display_name and guid:
             display_name = guid_to_name.get(guid)
         if display_name and display_name not in participants:

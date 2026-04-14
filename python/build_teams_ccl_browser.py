@@ -410,6 +410,24 @@ HTML_TEMPLATE = """<!doctype html>
     .toggle-expandable-list {
       justify-self: start;
     }
+    .participant-chip {
+      font: inherit;
+      line-height: 1.2;
+    }
+    .participant-chip-link {
+      background: #eaf1ff;
+      border-color: #355cde;
+      color: #1d3f9c;
+      cursor: pointer;
+    }
+    .participant-chip-link:hover {
+      background: #dfe9ff;
+    }
+    .participant-chip-static {
+      background: #f1f3f5;
+      border-color: #d5dbe3;
+      color: #6a7582;
+    }
     .messages {
       display: grid;
       gap: 10px;
@@ -534,6 +552,23 @@ HTML_TEMPLATE = """<!doctype html>
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+    }
+    details.hidden-event {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,.72);
+      padding: 0 12px 12px;
+    }
+    details.hidden-event > summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 12px 0;
+      list-style-position: outside;
+    }
+    details.hidden-event[open] > summary {
+      margin-bottom: 4px;
     }
     .call-link {
       border: 1px solid var(--accent);
@@ -694,7 +729,7 @@ HTML_TEMPLATE = """<!doctype html>
       messageViewFilter: "all",
       threadDateFrom: "",
       threadDateTo: "",
-      expandRawEvents: false,
+      expandHiddenData: false,
       threadId: null,
       callKey: null,
       focusCallKey: null,
@@ -716,6 +751,13 @@ HTML_TEMPLATE = """<!doctype html>
     const callDirectionFilter = document.getElementById("callDirectionFilter");
     const toast = document.getElementById("toast");
 
+    const PERSON_NAME_BY_GUID = new Map(
+      Object.entries(DATA.guid_directory || {})
+        .map(([guid, name]) => [normalizeGuid(guid), stripFcs(name)])
+        .filter(([guid, name]) => guid && name)
+    );
+    const DIRECT_CHAT_BY_GUID = new Map();
+    const DIRECT_CHAT_BY_NAME = new Map();
     const CALLS_BY_ID = new Map();
     const CALLS_BY_SHARED = new Map();
     const CALLS_BY_KEY = new Map();
@@ -724,6 +766,18 @@ HTML_TEMPLATE = """<!doctype html>
     const CALLS_BY_NAME_PAIR = new Map();
     const SYNTHETIC_CALLS_CACHE = new Map();
     for (const call of DATA.calls || []) {
+      rememberPerson(call.originator_id, call.originator_display_name);
+      rememberPerson(call.target_id, call.target_display_name);
+      for (const session of call.participant_sessions || []) {
+        rememberPerson(session.id, session.display_name);
+      }
+      const participantIds = (call.participant_ids || []).map(normalizeGuid).filter(Boolean);
+      const participantNames = (call.participant_display_names || []).map(value => stripFcs(value)).filter(Boolean);
+      if (participantIds.length === participantNames.length) {
+        for (let index = 0; index < participantIds.length; index += 1) {
+          rememberPerson(participantIds[index], participantNames[index]);
+        }
+      }
       if (call.call_id) CALLS_BY_ID.set(String(call.call_id).toLowerCase(), call);
       if (call.shared_correlation_id) CALLS_BY_SHARED.set(String(call.shared_correlation_id).toLowerCase(), call);
       CALLS_BY_KEY.set(callKey(call), call);
@@ -781,11 +835,30 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function normalizeGuid(value) {
-      return String(value || "").trim().toLowerCase();
+      const text = String(value || "").trim();
+      if (!text) return "";
+      const match = text.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+      return match ? match[0].toLowerCase() : text.toLowerCase();
     }
 
     function normalizeName(value) {
       return stripFcs(value).toLowerCase();
+    }
+
+    function rememberPerson(guid, displayName) {
+      const normalizedGuid = normalizeGuid(guid);
+      const cleanedName = stripFcs(displayName);
+      if (normalizedGuid && cleanedName && !PERSON_NAME_BY_GUID.has(normalizedGuid)) {
+        PERSON_NAME_BY_GUID.set(normalizedGuid, cleanedName);
+      }
+    }
+
+    function personNameForGuid(guid) {
+      return stripFcs(PERSON_NAME_BY_GUID.get(normalizeGuid(guid)) || "");
+    }
+
+    function looksLikeGuid(value) {
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(stripFcs(value || ""));
     }
 
     const CURRENT_USER_ID = normalizeGuid(DATA.profile && DATA.profile.oid);
@@ -813,6 +886,41 @@ HTML_TEMPLATE = """<!doctype html>
       "#4D7C0F": { bg: "#C6FA72", outline: "#2E4A09", block: "#F7FFE9", title: "#2E4A09" },
       "#8A6F5A": { bg: "#E9D7C6", outline: "#4D3B2C", block: "#FBF5F0", title: "#4D3B2C" },
     };
+
+    function rememberDirectChatThread(thread) {
+      if (!thread || thread.category !== "chat_space") return;
+      if (!Array.isArray(thread.messages) || thread.messages.length === 0) return;
+      const ids = dedupe((thread.participant_ids || []).map(normalizeGuid).filter(Boolean));
+      const names = dedupe((thread.participants || []).map(value => stripFcs(value)).filter(Boolean));
+      const hasCurrentId = Boolean(CURRENT_USER_ID && ids.includes(CURRENT_USER_ID));
+      const hasCurrentName = Boolean(CURRENT_USER_NAME && names.some(name => normalizeName(name) === CURRENT_USER_NAME));
+      if (!hasCurrentId && !hasCurrentName) return;
+
+      if (ids.length === 2 && names.length === 2) {
+        const otherId = ids.find(guid => guid !== CURRENT_USER_ID) || "";
+        const otherName = names.find(name => normalizeName(name) !== CURRENT_USER_NAME) || "";
+        rememberPerson(otherId, otherName);
+      }
+
+      for (const guid of ids) {
+        if (guid && guid !== CURRENT_USER_ID && !DIRECT_CHAT_BY_GUID.has(guid)) {
+          DIRECT_CHAT_BY_GUID.set(guid, thread);
+        }
+      }
+      for (const name of names) {
+        const normalizedName = normalizeName(name);
+        if (normalizedName && normalizedName !== CURRENT_USER_NAME && !DIRECT_CHAT_BY_NAME.has(normalizedName)) {
+          DIRECT_CHAT_BY_NAME.set(normalizedName, thread);
+        }
+      }
+    }
+
+    for (const thread of DATA.threads || []) {
+      for (const message of thread.messages || []) {
+        rememberPerson(message.sender_id, message.sender_display_name);
+      }
+      rememberDirectChatThread(thread);
+    }
 
     function participantGuidPairKey(values) {
       const items = dedupe((values || []).map(normalizeGuid).filter(Boolean)).sort();
@@ -853,6 +961,42 @@ HTML_TEMPLATE = """<!doctype html>
         call.originator_display_name,
         call.target_display_name,
       ].map(normalizeName).filter(Boolean));
+    }
+
+    function callParticipantEntries(call) {
+      const combined = [];
+      for (const session of call.participant_sessions || []) {
+        combined.push({
+          id: normalizeGuid(session.id || ""),
+          name: stripFcs(session.display_name || ""),
+        });
+      }
+      const baseEntries = buildParticipantEntries(
+        [
+          ...(call.participant_ids || []),
+          call.originator_id,
+          call.target_id,
+        ],
+        [
+          ...(call.participant_display_names || []),
+          call.originator_display_name,
+          call.target_display_name,
+        ]
+      );
+      for (const entry of baseEntries) combined.push(entry);
+      return combined;
+    }
+
+    function threadParticipantEntries(thread) {
+      const entries = [];
+      const resolvedIds = (thread.participant_ids || []).map(normalizeGuid).filter(Boolean);
+      for (const guid of resolvedIds) {
+        entries.push({ id: guid, name: personNameForGuid(guid) });
+      }
+      for (const name of thread.participants || []) {
+        entries.push({ id: "", name: stripFcs(name) });
+      }
+      return entries;
     }
 
     function callTimelineTimestamp(call) {
@@ -1244,7 +1388,7 @@ HTML_TEMPLATE = """<!doctype html>
     function collectEventParticipants(message) {
       const seen = [];
       for (const guid of extractGuids(message.content_text || "")) {
-        const name = DATA.guid_directory && DATA.guid_directory[guid];
+        const name = personNameForGuid(guid);
         if (name && !seen.includes(name)) {
           seen.push(name);
         }
@@ -1335,12 +1479,12 @@ HTML_TEMPLATE = """<!doctype html>
       const participants = collectEventParticipants(message);
       const linkedKey = linkedCall ? callKey(linkedCall) : "";
       const visuals = callCardVisuals(message, linkedCall);
-      const linkedParticipants = linkedCall ? callParticipantDisplayNames(linkedCall) : [];
-      const participantLabel = linkedParticipants.length
-        ? linkedParticipants.join(" / ")
-        : (participants.length ? participants.map(name => stripFcs(name)).join(" / ") : "");
+      const participantEntries = linkedCall
+        ? callParticipantEntries(linkedCall)
+        : buildParticipantEntries(extractGuids(raw), participants.map(name => stripFcs(name)));
+      const hiddenCount = normalizeParticipantList(participantEntries).filter(entry => entry.hidden).length;
 
-      return `
+      const cardHtml = `
         <div class="call-event" style="--call-bg:${escapeHtml(visuals.bg)};--call-outline:${escapeHtml(visuals.outline)};--call-block-bg:${escapeHtml(visuals.block)};--call-title:${escapeHtml(visuals.title)};">
           <div class="call-event-header">
             <div class="call-event-title">${highlightSearchHtml(eventName)}</div>
@@ -1349,8 +1493,7 @@ HTML_TEMPLATE = """<!doctype html>
             </div>
           </div>
           <div class="call-event-grid">
-            <div class="call-event-block"><div class="k">Participants</div><div>${highlightSearchHtml(participantLabel || stripFcs(callLabel(linkedCall || {})))}</div></div>
-            <div class="call-event-block"><div class="k">Call Type</div><div>${highlightSearchHtml(linkedCall ? (linkedCall.call_type || "") : "")}</div></div>
+            <div class="call-event-block wide"><div class="k">Participants</div>${renderExpandableChipGroup(participantEntries, { emptyLabel: stripFcs(callLabel(linkedCall || {})) || "No participants were resolved." })}</div>
             <div class="call-event-block"><div class="k">Direction</div><div>${highlightSearchHtml(linkedCall ? displayCallDirectionLabel(linkedCall) : "")}</div></div>
             <div class="call-event-block"><div class="k">State</div><div>${highlightSearchHtml(linkedCall ? displayCallStateLabel(linkedCall) : eventName)}</div></div>
             <div class="call-event-block"><div class="k">Start Time</div><div>${escapeHtml(fmt(linkedCall ? linkedCall.start_time : message.timestamp))}</div></div>
@@ -1358,12 +1501,10 @@ HTML_TEMPLATE = """<!doctype html>
           </div>
           ${message.synthetic_call
             ? `<div class="subtle">Merged from the Calls dataset for this conversation.</div>`
-            : `<details class="raw-event" ${state.expandRawEvents ? "open" : ""}>
-                 <summary>Show raw event payload</summary>
-                 <div class="body mono">${escapeHtml(raw)}</div>
-               </details>`}
+            : ``}
         </div>
       `;
+      return renderHiddenEventWrapper(cardHtml, hiddenCount, "participants");
     }
 
     function messageLinkedCallKey(message) {
@@ -1390,8 +1531,8 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function resolveGuidLabel(guid) {
-      const clean = String(guid || "").toLowerCase();
-      return stripFcs((DATA.guid_directory && DATA.guid_directory[clean]) || clean || "Unknown");
+      const cleaned = personNameForGuid(guid);
+      return cleaned || stripFcs(guid || "Unknown");
     }
 
     function parseJsonObject(text) {
@@ -1409,22 +1550,173 @@ HTML_TEMPLATE = """<!doctype html>
       for (const entry of Array.isArray(entries) ? entries : []) {
         const memberId = normalizeGuid((entry && (entry.id || entry.mri || entry.userId)) || "");
         const friendlyName = stripFcs((entry && (entry.friendlyname || entry.displayName || entry.name)) || "");
-        const resolvedName = friendlyName || (memberId ? resolveGuidLabel(memberId) : "");
+        const resolvedName = friendlyName || (memberId ? personNameForGuid(memberId) : "");
         if (memberId && !memberIds.includes(memberId)) memberIds.push(memberId);
         if (resolvedName && !memberNames.includes(resolvedName)) memberNames.push(resolvedName);
       }
       return { memberIds, memberNames };
     }
 
+    function participantEntryKey(entry) {
+      const guid = normalizeGuid(entry && entry.id);
+      const name = normalizeName(entry && entry.name);
+      return guid || name || "";
+    }
+
+    function buildParticipantEntries(ids = [], names = []) {
+      const entries = [];
+      if (ids.length && ids.length === names.length) {
+        for (let index = 0; index < ids.length; index += 1) {
+          const guid = normalizeGuid(ids[index]);
+          const name = stripFcs(names[index] || (guid ? resolveGuidLabel(guid) : ""));
+          entries.push({ id: guid, name: name || (guid ? resolveGuidLabel(guid) : "") });
+        }
+      } else {
+        for (const guid of ids || []) {
+          const normalizedGuid = normalizeGuid(guid);
+          if (normalizedGuid) {
+            entries.push({ id: normalizedGuid, name: resolveGuidLabel(normalizedGuid) });
+          }
+        }
+        for (const name of names || []) {
+          const cleanedName = stripFcs(name);
+          if (cleanedName) entries.push({ id: "", name: cleanedName });
+        }
+      }
+
+      const unique = [];
+      const seen = new Set();
+      for (const entry of entries) {
+        const key = participantEntryKey(entry);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        unique.push({
+          id: normalizeGuid(entry.id || ""),
+          name: stripFcs(entry.name || (entry.id ? personNameForGuid(entry.id) : "")),
+        });
+      }
+      return unique;
+    }
+
+    function directChatThreadForPerson(entry) {
+      const guid = normalizeGuid(entry && entry.id);
+      const name = normalizeName(entry && entry.name);
+      if ((guid && guid === CURRENT_USER_ID) || (name && name === CURRENT_USER_NAME)) return null;
+      if (guid && DIRECT_CHAT_BY_GUID.has(guid)) {
+        const thread = DIRECT_CHAT_BY_GUID.get(guid);
+        if (!state.threadId || thread.id !== state.threadId) return thread;
+      }
+      if (name && DIRECT_CHAT_BY_NAME.has(name)) {
+        const thread = DIRECT_CHAT_BY_NAME.get(name);
+        if (!state.threadId || thread.id !== state.threadId) return thread;
+      }
+      return null;
+    }
+
+    function sortParticipantEntries(entries) {
+      return entries.slice().sort((left, right) => {
+        const leftLabel = stripFcs(left.label || left.name || left.id || "").toLowerCase();
+        const rightLabel = stripFcs(right.label || right.name || right.id || "").toLowerCase();
+        return leftLabel.localeCompare(rightLabel);
+      });
+    }
+
+    function normalizeParticipantList(values) {
+      const items = [];
+      const seenIds = new Set();
+      const seenNames = new Set();
+      for (const value of values || []) {
+        const entry = value && typeof value === "object" && !Array.isArray(value)
+          ? {
+              id: normalizeGuid(value.id || value.guid || value.userId || ""),
+              name: stripFcs(value.name || value.display_name || value.displayName || ""),
+            }
+          : {
+              id: "",
+              name: stripFcs(value),
+            };
+        const guid = normalizeGuid(entry.id);
+        const resolvedName = stripFcs(entry.name || (guid ? personNameForGuid(guid) : ""));
+        const visibleLabel = resolvedName && !looksLikeGuid(resolvedName) ? resolvedName : "";
+        const hiddenLabel = stripFcs(guid || entry.name || "");
+        const entryIdKey = guid || "";
+        const visibleKey = normalizeName(visibleLabel);
+        const hiddenKey = normalizeName(hiddenLabel);
+        if (visibleLabel) {
+          if (entryIdKey && seenIds.has(entryIdKey)) continue;
+          if (visibleKey && seenNames.has(visibleKey)) continue;
+          if (entryIdKey) seenIds.add(entryIdKey);
+          if (visibleKey) seenNames.add(visibleKey);
+          items.push({
+            id: guid,
+            name: visibleLabel,
+            label: visibleLabel,
+            hidden: false,
+          });
+          continue;
+        }
+        if (!hiddenLabel) continue;
+        if (entryIdKey && seenIds.has(entryIdKey)) continue;
+        if (!entryIdKey && hiddenKey && seenNames.has(hiddenKey)) continue;
+        if (entryIdKey) seenIds.add(entryIdKey);
+        if (hiddenKey) seenNames.add(hiddenKey);
+        items.push({
+          id: guid,
+          name: "",
+          label: hiddenLabel,
+          hidden: true,
+        });
+      }
+      return items;
+    }
+
+    function renderHiddenEntries(entries, summaryLabel = "Show Hidden Data") {
+      const hiddenEntries = sortParticipantEntries(entries.filter(entry => entry.hidden));
+      if (!hiddenEntries.length) return "";
+      return `
+        <details class="raw-event hidden-data" ${state.expandHiddenData ? "open" : ""}>
+          <summary>${escapeHtml(`${summaryLabel} (${hiddenEntries.length})`)}</summary>
+          <div class="chips">
+            ${hiddenEntries.map(entry => `<span class="chip participant-chip participant-chip-static">${escapeHtml(entry.label)}</span>`).join("")}
+          </div>
+        </details>
+      `;
+    }
+
+    function renderHiddenEventWrapper(contentHtml, hiddenCount, noun = "members") {
+      if (!hiddenCount) return contentHtml;
+      const label = `${hiddenCount} hidden ${hiddenCount === 1 ? noun.replace(/s$/, "") : noun}`;
+      return `
+        <details class="hidden-event" ${state.expandHiddenData ? "open" : ""}>
+          <summary>${escapeHtml(label)}</summary>
+          ${contentHtml}
+        </details>
+      `;
+    }
+
     function renderExpandableChipGroup(values, options = {}) {
-      const items = dedupe((values || []).map(value => stripFcs(value)).filter(Boolean));
-      if (!items.length) {
-        return `<div class="subtle">${escapeHtml(options.emptyLabel || "No people listed.")}</div>`;
+      const entries = normalizeParticipantList(values);
+      const visibleEntries = sortParticipantEntries(entries.filter(entry => !entry.hidden));
+      const hiddenDetails = renderHiddenEntries(entries, options.hiddenSummaryLabel || "Show Hidden Data");
+      if (!visibleEntries.length) {
+        return `
+          <div class="expandable-shell">
+            <div class="subtle">${escapeHtml(options.emptyLabel || "No visible people listed.")}</div>
+            ${hiddenDetails}
+          </div>
+        `;
       }
       return `
         <div class="expandable-shell">
           <div class="chips expandable-list collapsed" data-expandable-list>
-            ${items.map(name => `<div class="chip">${escapeHtml(name)}</div>`).join("")}
+            ${visibleEntries.map(entry => {
+              const chatThread = options.enableChatLinks === false ? null : directChatThreadForPerson(entry);
+              const label = stripFcs(entry.label || entry.name || "");
+              if (chatThread) {
+                return `<button type="button" class="chip participant-chip participant-chip-link open-participant-chat" data-thread-id="${escapeHtml(chatThread.id)}" data-label="${escapeHtml(label)}">${escapeHtml(label)}</button>`;
+              }
+              return `<span class="chip participant-chip participant-chip-static">${escapeHtml(label)}</span>`;
+            }).join("")}
           </div>
           <button
             type="button"
@@ -1432,6 +1724,7 @@ HTML_TEMPLATE = """<!doctype html>
             data-expand-label="${escapeHtml(options.expandLabel || "Expand")}"
             data-collapse-label="${escapeHtml(options.collapseLabel || "Collapse")}"
           >${escapeHtml(options.expandLabel || "Expand")}</button>
+          ${hiddenDetails}
         </div>
       `;
     }
@@ -1465,6 +1758,26 @@ HTML_TEMPLATE = """<!doctype html>
       }
     }
 
+    function initParticipantChatLinks(scope) {
+      for (const element of scope.querySelectorAll(".open-participant-chat")) {
+        element.addEventListener("click", () => {
+          state.view = "messages";
+          state.threadId = element.dataset.threadId;
+          state.category = "";
+          state.messageViewFilter = "all";
+          state.threadDateFrom = "";
+          state.threadDateTo = "";
+          state.focusTimestamp = null;
+          state.focusCallKey = null;
+          state.messageSearch = "";
+          messageSearch.value = "";
+          categoryFilter.value = "";
+          renderView();
+          scrollMainToTop();
+        });
+      }
+    }
+
     function parseAddMemberEvent(message) {
       const unique = [];
       for (const guid of extractGuids(message.content_text || "")) {
@@ -1473,9 +1786,9 @@ HTML_TEMPLATE = """<!doctype html>
 
       const senderId = String(message.sender_id || "").toLowerCase();
       const actorId = senderId || unique[0] || "";
-      const actorName = stripFcs(message.sender_display_name || resolveGuidLabel(actorId) || "Unknown");
+      const actorName = stripFcs(message.sender_display_name || personNameForGuid(actorId) || "");
       const addedIds = unique.filter(guid => guid !== actorId);
-      const addedNames = addedIds.map(resolveGuidLabel);
+      const addedNames = addedIds.map(personNameForGuid);
 
       return {
         actorId,
@@ -1490,7 +1803,7 @@ HTML_TEMPLATE = """<!doctype html>
       const actorId = normalizeGuid(payload && payload.initiator);
       const actorName = stripFcs(
         message.sender_display_name ||
-        (actorId && DATA.guid_directory && DATA.guid_directory[actorId]) ||
+        personNameForGuid(actorId) ||
         "System"
       );
       const members = resolveMemberEntries(payload && payload.members);
@@ -1506,7 +1819,7 @@ HTML_TEMPLATE = """<!doctype html>
       const actorId = normalizeGuid(message.sender_id || "");
       const actorName = stripFcs(
         message.sender_display_name ||
-        (actorId && DATA.guid_directory && DATA.guid_directory[actorId]) ||
+        personNameForGuid(actorId) ||
         ""
       );
       let removedIds = dedupe(extractGuids(message.content_text || "").map(normalizeGuid).filter(Boolean));
@@ -1514,7 +1827,7 @@ HTML_TEMPLATE = """<!doctype html>
         const filtered = removedIds.filter(id => id !== actorId);
         if (filtered.length) removedIds = filtered;
       }
-      const removedNames = dedupe(removedIds.map(resolveGuidLabel).filter(Boolean));
+      const removedNames = dedupe(removedIds.map(personNameForGuid).filter(Boolean));
       return {
         actorId,
         actorName,
@@ -1542,65 +1855,65 @@ HTML_TEMPLATE = """<!doctype html>
 
     function renderAddMemberEventBody(message, thread) {
       const parsed = parseAddMemberEvent(message);
-      return `
+      const addedEntries = buildParticipantEntries(parsed.addedIds, parsed.addedNames);
+      const addedCount = parsed.addedIds.length;
+      const hiddenCount = normalizeParticipantList(addedEntries).filter(entry => entry.hidden).length;
+      const cardHtml = `
         <div class="call-event" style="--call-bg:#e4e8ed;--call-outline:#66727f;--call-block-bg:#f4f6f8;--call-title:#3e4852;">
           <div class="call-event-header">
-            <div class="call-event-title">${escapeHtml(parsed.addedNames.length > 1 ? "Members Added" : "Member Added")}</div>
+            <div class="call-event-title">${escapeHtml(addedCount > 1 ? "Members Added" : "Member Added")}</div>
           </div>
           <div class="call-event-grid">
-            <div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(parsed.actorName)}</div></div>
-            <div class="call-event-block"><div class="k">Added Count</div><div>${escapeHtml(String(parsed.addedNames.length || 0))}</div></div>
+            <div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(parsed.actorName || "Hidden")}</div></div>
+            <div class="call-event-block"><div class="k">Added Count</div><div>${escapeHtml(String(addedCount || 0))}</div></div>
             <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(stripFcs(thread.label || thread.id || ""))}</div></div>
-            ${renderMembershipNamesBlock("Added", parsed.addedNames, "No added members were resolved.")}
+            ${renderMembershipNamesBlock("Added", addedEntries, "No added members were resolved.")}
           </div>
-          <details class="raw-event" ${state.expandRawEvents ? "open" : ""}>
-            <summary>Show raw event payload</summary>
-            <div class="body mono">${escapeHtml(message.content_text || "")}</div>
-          </details>
         </div>
       `;
+      return renderHiddenEventWrapper(cardHtml, hiddenCount, "members");
     }
 
     function renderMemberJoinedEventBody(message, thread) {
       const parsed = parseMemberJoinedEvent(message);
-      return `
+      const joinedEntries = buildParticipantEntries(parsed.joinedIds, parsed.joinedNames);
+      const joinedCount = parsed.joinedIds.length;
+      const hiddenCount = normalizeParticipantList(joinedEntries).filter(entry => entry.hidden).length;
+      const cardHtml = `
         <div class="call-event" style="--call-bg:#e4f0e9;--call-outline:#5b7f69;--call-block-bg:#f5faf7;--call-title:#2f5e40;">
           <div class="call-event-header">
-            <div class="call-event-title">${escapeHtml(parsed.joinedNames.length > 1 ? "Members Joined" : "Member Joined")}</div>
+            <div class="call-event-title">${escapeHtml(joinedCount > 1 ? "Members Joined" : "Member Joined")}</div>
           </div>
           <div class="call-event-grid">
             <div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(parsed.actorName || "System")}</div></div>
-            <div class="call-event-block"><div class="k">Joined Count</div><div>${escapeHtml(String(parsed.joinedNames.length || 0))}</div></div>
+            <div class="call-event-block"><div class="k">Joined Count</div><div>${escapeHtml(String(joinedCount || 0))}</div></div>
             <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(stripFcs(thread.label || thread.id || ""))}</div></div>
-            ${renderMembershipNamesBlock("Joined", parsed.joinedNames, "No joined members were resolved.")}
+            ${renderMembershipNamesBlock("Joined", joinedEntries, "No joined members were resolved.")}
           </div>
-          <details class="raw-event" ${state.expandRawEvents ? "open" : ""}>
-            <summary>Show raw event payload</summary>
-            <div class="body mono">${escapeHtml(message.content_text || "")}</div>
-          </details>
         </div>
       `;
+      return renderHiddenEventWrapper(cardHtml, hiddenCount, "members");
     }
 
     function renderDeleteMemberEventBody(message, thread) {
       const parsed = parseDeleteMemberEvent(message);
-      return `
+      const removedEntries = buildParticipantEntries(parsed.removedIds, parsed.removedNames);
+      const removedCount = parsed.removedIds.length;
+      const hiddenCount = normalizeParticipantList(removedEntries).filter(entry => entry.hidden).length;
+      const cardHtml = `
         <div class="call-event" style="--call-bg:#f6ece4;--call-outline:#9a6b52;--call-block-bg:#fff7f1;--call-title:#7c523b;">
           <div class="call-event-header">
-            <div class="call-event-title">${escapeHtml(parsed.removedNames.length > 1 ? "Members Removed" : "Member Removed")}</div>
+            <div class="call-event-title">${escapeHtml(removedCount > 1 ? "Members Removed" : "Member Removed")}</div>
           </div>
           <div class="call-event-grid">
-            ${parsed.actorName ? `<div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(parsed.actorName)}</div></div>` : ``}
-            <div class="call-event-block"><div class="k">Removed Count</div><div>${escapeHtml(String(parsed.removedNames.length || 0))}</div></div>
+            ${parsed.actorName ? `<div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(parsed.actorName)}</div></div>` : `<div class="call-event-block"><div class="k">Actor</div><div>Hidden</div></div>`}
+            <div class="call-event-block"><div class="k">Removed Count</div><div>${escapeHtml(String(removedCount || 0))}</div></div>
             <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(stripFcs(thread.label || thread.id || ""))}</div></div>
-            ${renderMembershipNamesBlock("Removed", parsed.removedNames, "No removed members were resolved.")}
+            ${renderMembershipNamesBlock("Removed", removedEntries, "No removed members were resolved.")}
           </div>
-          <details class="raw-event" ${state.expandRawEvents ? "open" : ""}>
-            <summary>Show raw event payload</summary>
-            <div class="body mono">${escapeHtml(message.content_text || "")}</div>
-          </details>
         </div>
       `;
+      return renderHiddenEventWrapper(cardHtml, hiddenCount, "members");
     }
 
     function renderMembershipEventBody(message, thread) {
@@ -1707,21 +2020,29 @@ HTML_TEMPLATE = """<!doctype html>
 
     function messageDisplaySender(message) {
       if (message.message_type === "ThreadActivity/AddMember") {
-        return parseAddMemberEvent(message).actorName || "Unknown";
+        const parsed = parseAddMemberEvent(message);
+        if (parsed.actorName) return parsed.actorName;
+        if (parsed.addedIds.length === 1) return "Hidden";
+        if (parsed.addedIds.length > 1) return `${parsed.addedIds.length} hidden members`;
+        return "Hidden";
       }
       if (message.message_type === "ThreadActivity/MemberJoined") {
         const parsed = parseMemberJoinedEvent(message);
         if (parsed.actorName && parsed.actorName !== "System") return parsed.actorName;
         if (parsed.joinedNames.length === 1) return parsed.joinedNames[0];
         if (parsed.joinedNames.length > 1) return `${parsed.joinedNames.length} members`;
-        return "Membership Event";
+        if (parsed.joinedIds.length === 1) return "Hidden";
+        if (parsed.joinedIds.length > 1) return `${parsed.joinedIds.length} hidden members`;
+        return "Hidden";
       }
       if (message.message_type === "ThreadActivity/DeleteMember") {
         const parsed = parseDeleteMemberEvent(message);
         if (parsed.actorName) return parsed.actorName;
         if (parsed.removedNames.length === 1) return parsed.removedNames[0];
         if (parsed.removedNames.length > 1) return `${parsed.removedNames.length} members`;
-        return "Membership Event";
+        if (parsed.removedIds.length === 1) return "Hidden";
+        if (parsed.removedIds.length > 1) return `${parsed.removedIds.length} hidden members`;
+        return "Hidden";
       }
       return stripFcs(message.sender_display_name || message.sender_id || "Unknown");
     }
@@ -2018,6 +2339,7 @@ HTML_TEMPLATE = """<!doctype html>
         </div>
       `;
       initExpandableLists(contentPanel);
+      initParticipantChatLinks(contentPanel);
 
       [...contentPanel.querySelectorAll(".open-search-thread")].forEach(element => {
         element.addEventListener("click", () => {
@@ -2076,7 +2398,13 @@ HTML_TEMPLATE = """<!doctype html>
           <div class="chip">${escapeHtml(prettyCategory(thread.category))} | ${allMessages.length} timeline items</div>
         </div>
         <div class="participant-cloud">
-          ${renderExpandableChipGroup(thread.participants || [], { emptyLabel: "No participants were resolved." })}
+          ${renderExpandableChipGroup(threadParticipantEntries(thread), {
+            emptyLabel: "No participants were resolved.",
+            enableChatLinks: ["team_chat", "thread"].includes(thread.category),
+          })}
+        </div>
+        <div class="section-divider">
+          <div class="section-label">Details</div>
         </div>
         <div class="detail-toolbar">
           <div class="toolbar-row">
@@ -2090,7 +2418,7 @@ HTML_TEMPLATE = """<!doctype html>
               <button type="button" class="call-link jump-oldest">Oldest</button>
               ${thread.csv_path ? `<a class="call-link" href="${escapeHtml(thread.csv_path)}" target="_blank" rel="noopener">Open CSV</a>` : ``}
               <button type="button" class="call-link copy-thread-id">Copy Thread Id</button>
-              <button type="button" class="call-link toggle-raw-events">${state.expandRawEvents ? "Hide Raw Payloads" : "Show Raw Payloads"}</button>
+              <button type="button" class="call-link toggle-raw-events">${state.expandHiddenData ? "Hide Hidden Data" : "Show Hidden Data"}</button>
             </div>
           </div>
           <div class="range-controls">
@@ -2114,9 +2442,7 @@ HTML_TEMPLATE = """<!doctype html>
         </div>
         <div class="meta-grid">
           <div class="meta-block"><div class="k">Thread Id</div><div class="mono">${escapeHtml(thread.id)}</div></div>
-          <div class="meta-block"><div class="k">Metadata Quality</div><div>${escapeHtml(thread.metadata_quality || "")}</div></div>
           <div class="meta-block"><div class="k">Participants</div><div>${(thread.participants || []).length}</div></div>
-          <div class="meta-block"><div class="k">Known Metadata</div><div>${Object.keys(meta).length}</div></div>
           <div class="meta-block"><div class="k">Merged Calls</div><div>${escapeHtml(String(linkedCallCount))}</div></div>
           ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Subject</div><div>${escapeHtml(meetingSubject)}</div></div>`}
           ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Window</div><div>${escapeHtml(meetingStart ? `${fmt(meetingStart)} to ${fmt(meetingEnd)}` : "")}</div></div>`}
@@ -2146,6 +2472,7 @@ HTML_TEMPLATE = """<!doctype html>
         </div>
       `;
       initExpandableLists(contentPanel);
+      initParticipantChatLinks(contentPanel);
       [...contentPanel.querySelectorAll(".message-filter")].forEach(element => {
         element.addEventListener("click", () => {
           state.messageViewFilter = element.dataset.filter;
@@ -2181,7 +2508,7 @@ HTML_TEMPLATE = """<!doctype html>
       const toggleRaw = contentPanel.querySelector(".toggle-raw-events");
       if (toggleRaw) {
         toggleRaw.addEventListener("click", () => {
-          state.expandRawEvents = !state.expandRawEvents;
+          state.expandHiddenData = !state.expandHiddenData;
           renderThreadPanel();
         });
       }
