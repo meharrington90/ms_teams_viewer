@@ -26,7 +26,7 @@ HTML_TEMPLATE = """<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MS Teams Viewer</title>
+  <title>Michaelsoft Teams</title>
   <style>
     :root {
       --bg: #f4f1ea;
@@ -41,7 +41,9 @@ HTML_TEMPLATE = """<!doctype html>
       --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
       --sans: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
     }
-    * { box-sizing: border-box; }
+    *,
+    *::before,
+    *::after { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: var(--sans);
@@ -129,17 +131,21 @@ HTML_TEMPLATE = """<!doctype html>
     .view-tabs {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 12px;
+      gap: 6px;
+      margin-bottom: 10px;
     }
     .tab {
       border: 1px solid var(--line);
       border-radius: 12px;
-      padding: 10px 12px;
+      padding: 5px 12px;
       background: rgba(255,255,255,.72);
       color: var(--ink);
       font: inherit;
       cursor: pointer;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: background .15s ease, border-color .15s ease, transform .15s ease;
     }
     .tab:hover { transform: translateY(-1px); }
@@ -150,18 +156,32 @@ HTML_TEMPLATE = """<!doctype html>
     }
     .toolbar {
       display: grid;
-      gap: 10px;
-      margin-bottom: 12px;
+      gap: 8px;
+      margin-bottom: 10px;
+      align-items: stretch;
     }
     .hidden { display: none !important; }
     input, select {
       width: 100%;
+      min-width: 0;
+      max-width: 100%;
       border: 1px solid var(--line);
       border-radius: 12px;
-      padding: 10px 12px;
+      padding: 8px 12px;
       background: #fff;
       color: var(--ink);
       font: inherit;
+      min-height: 46px;
+      line-height: 1.25;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(29,111,109,.12);
+    }
+    .toolbar > * {
+      min-width: 0;
     }
     .chip-row {
       display: flex;
@@ -198,10 +218,10 @@ HTML_TEMPLATE = """<!doctype html>
     }
     .list {
       display: grid;
-      gap: 8px;
+      gap: 6px;
     }
     .list-row {
-      padding: 12px 14px;
+      padding: 9px 12px;
       border-radius: 14px;
       border: 1px solid transparent;
       background: rgba(255,255,255,.7);
@@ -223,11 +243,11 @@ HTML_TEMPLATE = """<!doctype html>
     .list-row .meta {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
+      gap: 6px;
       align-items: baseline;
       color: var(--muted);
       font-size: 12px;
-      margin-top: 6px;
+      margin-top: 4px;
       min-width: 0;
     }
     .list-row .meta span {
@@ -241,9 +261,9 @@ HTML_TEMPLATE = """<!doctype html>
     }
     .preview {
       color: var(--muted);
-      font-size: 13px;
-      line-height: 1.35;
-      margin-top: 8px;
+      font-size: 12px;
+      line-height: 1.3;
+      margin-top: 6px;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
@@ -275,17 +295,22 @@ HTML_TEMPLATE = """<!doctype html>
       align-items: end;
     }
     .sidebar-range-controls {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
       align-items: end;
+      width: 100%;
     }
     .sidebar-range-controls .range-field {
+      flex: 0 1 calc((100% - 6px) / 2);
+      width: calc((100% - 6px) / 2);
       min-width: 0;
     }
     .sidebar-range-controls .range-action {
-      grid-column: 1 / -1;
-      justify-self: start;
+      flex: 0 0 100%;
+      width: 100%;
+      min-height: 40px;
+      border-radius: 12px;
     }
     .toolbar-divider {
       height: 1px;
@@ -294,7 +319,7 @@ HTML_TEMPLATE = """<!doctype html>
     }
     .range-field {
       display: grid;
-      gap: 4px;
+      gap: 3px;
       min-width: 150px;
     }
     .range-field span {
@@ -520,6 +545,57 @@ HTML_TEMPLATE = """<!doctype html>
       line-height: 1.4;
       word-break: break-word;
     }
+    .msg .body.attachment-body {
+      display: grid;
+      gap: 10px;
+      white-space: normal;
+    }
+    .msg .body-text {
+      white-space: pre-wrap;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .attachment-stack {
+      display: grid;
+      gap: 10px;
+    }
+    .attachment-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255,255,255,.72);
+      padding: 10px 12px;
+      display: grid;
+      gap: 6px;
+    }
+    .attachment-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .attachment-kind {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .attachment-name {
+      font-weight: 600;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .attachment-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .attachment-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      margin-top: 4px;
+    }
     details.msg-collapsible {
       padding: 0;
       overflow: hidden;
@@ -598,6 +674,9 @@ HTML_TEMPLATE = """<!doctype html>
       font: inherit;
       padding: 6px 10px;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .call-link:hover {
       background: #cfe7e4;
@@ -695,19 +774,19 @@ HTML_TEMPLATE = """<!doctype html>
     <aside class="sidebar">
       <div class="sidebar-top">
         <div class="title">
-          <h1>MS Teams Viewer</h1>
+          <h1>Michaelsoft Teams</h1>
         </div>
         <div class="view-tabs">
           <button id="viewMessages" class="tab active" type="button">Messages</button>
           <button id="viewCalls" class="tab" type="button">Calls</button>
         </div>
         <div id="messagesTools" class="toolbar">
-          <input id="messageSearch" type="search" placeholder="Search conversations and messages">
+          <input id="messageSearch" type="search" placeholder="Search Conversations and Messages...">
           <select id="categoryFilter">
-            <option value="">All message categories</option>
+            <option value="">All Message Types</option>
             <option value="chat_space">Chats</option>
-            <option value="team_chat">Meeting chats</option>
-            <option value="thread">Group chats</option>
+            <option value="team_chat">Meetings</option>
+            <option value="thread">Groups</option>
           </select>
           <div class="sidebar-range-controls">
             <label class="range-field">
@@ -722,16 +801,16 @@ HTML_TEMPLATE = """<!doctype html>
           </div>
         </div>
         <div id="callsTools" class="toolbar hidden">
-          <input id="callSearch" type="search" placeholder="Search calls and details">
+          <input id="callSearch" type="search" placeholder="Search Calls and Details...">
           <select id="callGroupFilter">
-            <option value="">All call groups</option>
+            <option value="">All Call Types</option>
             <option value="phone">Phone</option>
             <option value="meeting">Meeting</option>
             <option value="group">Group</option>
             <option value="call">Call</option>
           </select>
           <select id="callDirectionFilter">
-            <option value="">All</option>
+            <option value="">All Directions</option>
             <option value="inbound">Inbound</option>
             <option value="outbound">Outbound</option>
             <option value="declined">Declined</option>
@@ -814,6 +893,7 @@ HTML_TEMPLATE = """<!doctype html>
     const callDateTo = document.getElementById("callDateTo");
     const clearCallDateRange = document.getElementById("clearCallDateRange");
     const toast = document.getElementById("toast");
+    const MESSAGE_ATTACHMENT_CACHE = new WeakMap();
 
     const PERSON_NAME_BY_GUID = new Map(
       Object.entries(DATA.guid_directory || {})
@@ -830,6 +910,7 @@ HTML_TEMPLATE = """<!doctype html>
     const CALLS_BY_ID = new Map();
     const CALLS_BY_SHARED = new Map();
     const CALLS_BY_KEY = new Map();
+    const THREAD_BY_ID = new Map();
     const PREFERRED_THREADS_BY_CALL_KEY = new Map();
     const CALL_JUMP_TARGETS_BY_CALL_KEY = new Map();
     const PHONE_CALL_BY_KEY = new Map();
@@ -839,6 +920,18 @@ HTML_TEMPLATE = """<!doctype html>
     const CALLS_BY_GUID_PAIR = new Map();
     const CALLS_BY_NAME_PAIR = new Map();
     const SYNTHETIC_CALLS_CACHE = new Map();
+    const THREAD_TIMELINE_CACHE = new Map();
+    const SORTED_THREAD_TIMELINE_CACHE = new Map();
+    const LINKED_CALLS_BY_THREAD_CACHE = new Map();
+    const THREAD_SEARCH_TEXT_CACHE = new Map();
+    const THREAD_SIDEBAR_SUMMARY_CACHE = new Map();
+    const CALL_LABEL_CACHE = new Map();
+    const CALL_SEARCH_TEXT_CACHE = new Map();
+    const CALL_PRIMARY_TIME_VALUE_CACHE = new Map();
+    const CALL_KEY_CACHE = new WeakMap();
+    const LINKED_CALL_BY_MESSAGE_CACHE = new WeakMap();
+    const MESSAGE_HIDDEN_META_CACHE = new WeakMap();
+    const MESSAGE_SEARCH_TEXT_CACHE = new WeakMap();
     for (const call of DATA.calls || []) {
       rememberPerson(call.originator_id, call.originator_display_name);
       rememberPerson(call.target_id, call.target_display_name);
@@ -1073,6 +1166,9 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     for (const thread of DATA.threads || []) {
+      if (thread && thread.id) {
+        THREAD_BY_ID.set(thread.id, thread);
+      }
       for (const message of thread.messages || []) {
         rememberPerson(message.sender_id, message.sender_display_name);
       }
@@ -1561,15 +1657,29 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function threadSearchText(thread) {
+      const cacheKey = String(thread && thread.id || "");
+      if (!hasSidebarMessageDateRange() && cacheKey && THREAD_SEARCH_TEXT_CACHE.has(cacheKey)) {
+        return THREAD_SEARCH_TEXT_CACHE.get(cacheKey);
+      }
+      const messageTerms = visibleSidebarThreadMessages(thread).slice(0, 100).flatMap(message => [
+        message.content_text || "",
+        message.content_html || "",
+        displayMessageType(message),
+        ...messageAttachments(message).map(attachment => attachment.name || ""),
+      ]);
       const parts = [
         thread.label,
         thread.id,
         thread.category,
         ...(thread.participants || []),
-        ...visibleSidebarThreadMessages(thread).slice(0, 100).map(message => message.content_text || ""),
+        ...messageTerms,
         ...syntheticCallsForThread(thread).slice(0, 40).map(call => call.summary_text || call.call_state || call.call_type || ""),
       ];
-      return parts.filter(Boolean).join(" ").toLowerCase();
+      const value = parts.filter(Boolean).join(" ").toLowerCase();
+      if (!hasSidebarMessageDateRange() && cacheKey) {
+        THREAD_SEARCH_TEXT_CACHE.set(cacheKey, value);
+      }
+      return value;
     }
 
     function searchTerms() {
@@ -1656,6 +1766,7 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function visibleSidebarThreadMessages(thread) {
+      if (!hasSidebarMessageDateRange()) return thread.messages || [];
       return (thread.messages || []).filter(messagePassesSidebarDateRange);
     }
 
@@ -1688,22 +1799,41 @@ HTML_TEMPLATE = """<!doctype html>
       return html;
     }
 
-    function latestThreadMessage(thread) {
-      let bestMessage = null;
-      let bestTime = Number.NEGATIVE_INFINITY;
-      for (const message of visibleSidebarThreadMessages(thread)) {
+    function threadSidebarSummary(thread) {
+      const key = String(thread && thread.id || "");
+      if (!key || hasSidebarMessageDateRange()) return null;
+      if (THREAD_SIDEBAR_SUMMARY_CACHE.has(key)) {
+        return THREAD_SIDEBAR_SUMMARY_CACHE.get(key);
+      }
+
+      let latestMessage = null;
+      let latestTime = Number.NEGATIVE_INFINITY;
+      for (const message of thread.messages || []) {
         const current = timeValue(message.timestamp);
-        if (current >= bestTime) {
-          bestTime = current;
-          bestMessage = message;
+        if (current >= latestTime) {
+          latestTime = current;
+          latestMessage = message;
         }
       }
-      return bestMessage;
+
+      const summary = {
+        latestMessage,
+        latestTimestamp: latestTime,
+        latestTimestampRaw: latestMessage ? (latestMessage.timestamp || null) : null,
+      };
+      THREAD_SIDEBAR_SUMMARY_CACHE.set(key, summary);
+      return summary;
     }
 
-    function latestThreadPreview(thread) {
-      const message = latestThreadMessage(thread);
+    function threadPreviewForMessage(message) {
       if (!message) return "No recoverable message preview";
+      const attachmentPreview = messageAttachmentPreview(message);
+      if (attachmentPreview) {
+        if (message.content_text) {
+          return truncate(`${stripFcs(message.content_text)} [${attachmentPreview}]`);
+        }
+        return truncate(attachmentPreview);
+      }
       if (message.message_type === "Event/Call") {
         return truncate(`Call event: ${prettyCallEventName(callEventName(message.content_text || ""))}`);
       }
@@ -1722,11 +1852,34 @@ HTML_TEMPLATE = """<!doctype html>
       return truncate(stripFcs(message.content_text || message.message_type || ""));
     }
 
+    function latestThreadMessage(thread) {
+      const summary = threadSidebarSummary(thread);
+      if (summary) return summary.latestMessage;
+      let bestMessage = null;
+      let bestTime = Number.NEGATIVE_INFINITY;
+      for (const message of visibleSidebarThreadMessages(thread)) {
+        const current = timeValue(message.timestamp);
+        if (current >= bestTime) {
+          bestTime = current;
+          bestMessage = message;
+        }
+      }
+      return bestMessage;
+    }
+
+    function latestThreadPreview(thread) {
+      const summary = threadSidebarSummary(thread);
+      if (summary) return threadPreviewForMessage(summary.latestMessage);
+      return threadPreviewForMessage(latestThreadMessage(thread));
+    }
+
     function callPrimaryTimestamp(call) {
       return call.start_time || call.connect_time || call.end_time || "";
     }
 
     function threadLastTimestamp(thread) {
+      const summary = threadSidebarSummary(thread);
+      if (summary) return summary.latestTimestamp;
       let latest = Number.NEGATIVE_INFINITY;
       for (const message of visibleSidebarThreadMessages(thread)) {
         latest = Math.max(latest, timeValue(message.timestamp));
@@ -1735,6 +1888,8 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function threadLastTimestampRaw(thread) {
+      const summary = threadSidebarSummary(thread);
+      if (summary) return summary.latestTimestampRaw;
       let best = null;
       let latest = Number.NEGATIVE_INFINITY;
       for (const message of visibleSidebarThreadMessages(thread)) {
@@ -1776,23 +1931,37 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function callKey(call) {
-      return [
+      if (!call || typeof call !== "object") return "||||";
+      if (CALL_KEY_CACHE.has(call)) return CALL_KEY_CACHE.get(call);
+      const value = [
         call.call_id || "",
         call.start_time || "",
         call.shared_correlation_id || "",
         call.originator_id || "",
         call.target_id || "",
       ].join("|");
+      CALL_KEY_CACHE.set(call, value);
+      return value;
     }
 
     function callLabel(call) {
-      if (isMeetingCall(call)) return meetingCallTitle(call);
-      const participants = callParticipantDisplayNames(call);
-      if (participants.length) return summarizeNames(participants);
-      const origin = callSideLabel(call, "originator");
-      const target = callSideLabel(call, "target");
-      if (origin && target) return `${origin} -> ${target}`;
-      return origin || target || call.summary_text || call.call_id || "[unknown call]";
+      const key = callKey(call);
+      if (CALL_LABEL_CACHE.has(key)) return CALL_LABEL_CACHE.get(key);
+      let value = "[unknown call]";
+      if (isMeetingCall(call)) {
+        value = meetingCallTitle(call);
+      } else {
+        const participants = callParticipantDisplayNames(call);
+        if (participants.length) {
+          value = summarizeNames(participants);
+        } else {
+          const origin = callSideLabel(call, "originator");
+          const target = callSideLabel(call, "target");
+          value = origin && target ? `${origin} -> ${target}` : (origin || target || call.summary_text || call.call_id || "[unknown call]");
+        }
+      }
+      CALL_LABEL_CACHE.set(key, value);
+      return value;
     }
 
     function extractGuids(text) {
@@ -1806,20 +1975,38 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function findLinkedCall(message) {
+      if (LINKED_CALL_BY_MESSAGE_CACHE.has(message)) {
+        return LINKED_CALL_BY_MESSAGE_CACHE.get(message);
+      }
+      let linked = null;
       if (message.synthetic_call_key && CALLS_BY_KEY.has(message.synthetic_call_key)) {
-        return CALLS_BY_KEY.get(message.synthetic_call_key);
+        linked = CALLS_BY_KEY.get(message.synthetic_call_key);
+      } else {
+        const eventGuid = eventCallGuid(message.content_text || "");
+        if (eventGuid && CALLS_BY_ID.has(eventGuid)) {
+          linked = CALLS_BY_ID.get(eventGuid);
+        } else if (eventGuid && CALLS_BY_SHARED.has(eventGuid)) {
+          linked = CALLS_BY_SHARED.get(eventGuid);
+        } else {
+          const ids = extractGuids(message.content_text || "");
+          for (const id of ids) {
+            if (CALLS_BY_ID.has(id)) {
+              linked = CALLS_BY_ID.get(id);
+              break;
+            }
+          }
+          if (!linked) {
+            for (const id of ids) {
+              if (CALLS_BY_SHARED.has(id)) {
+                linked = CALLS_BY_SHARED.get(id);
+                break;
+              }
+            }
+          }
+        }
       }
-      const eventGuid = eventCallGuid(message.content_text || "");
-      if (eventGuid && CALLS_BY_ID.has(eventGuid)) return CALLS_BY_ID.get(eventGuid);
-      if (eventGuid && CALLS_BY_SHARED.has(eventGuid)) return CALLS_BY_SHARED.get(eventGuid);
-      const ids = extractGuids(message.content_text || "");
-      for (const id of ids) {
-        if (CALLS_BY_ID.has(id)) return CALLS_BY_ID.get(id);
-      }
-      for (const id of ids) {
-        if (CALLS_BY_SHARED.has(id)) return CALLS_BY_SHARED.get(id);
-      }
-      return null;
+      LINKED_CALL_BY_MESSAGE_CACHE.set(message, linked);
+      return linked;
     }
 
     function callEventName(text) {
@@ -1897,6 +2084,10 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function linkedCallsForThread(thread) {
+      const cacheKey = String(thread && thread.id || "");
+      if (cacheKey && LINKED_CALLS_BY_THREAD_CACHE.has(cacheKey)) {
+        return LINKED_CALLS_BY_THREAD_CACHE.get(cacheKey);
+      }
       const linked = new Map();
       for (const message of thread.messages || []) {
         const call = findLinkedCall(message);
@@ -1905,7 +2096,11 @@ HTML_TEMPLATE = """<!doctype html>
       for (const call of syntheticCallsForThread(thread)) {
         linked.set(callKey(call), call);
       }
-      return [...linked.values()].sort((left, right) => timeValue(callTimelineTimestamp(right)) - timeValue(callTimelineTimestamp(left)));
+      const value = [...linked.values()].sort((left, right) => timeValue(callTimelineTimestamp(right)) - timeValue(callTimelineTimestamp(left)));
+      if (cacheKey) {
+        LINKED_CALLS_BY_THREAD_CACHE.set(cacheKey, value);
+      }
+      return value;
     }
 
     function syntheticCallMessages(thread) {
@@ -1960,7 +2155,33 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function threadTimelineItems(thread) {
-      return [...(thread.messages || []), ...syntheticCallMessages(thread)];
+      const cacheKey = String(thread && thread.id || "");
+      if (cacheKey && THREAD_TIMELINE_CACHE.has(cacheKey)) {
+        return THREAD_TIMELINE_CACHE.get(cacheKey);
+      }
+      const value = [...(thread.messages || []), ...syntheticCallMessages(thread)];
+      if (cacheKey) {
+        THREAD_TIMELINE_CACHE.set(cacheKey, value);
+      }
+      return value;
+    }
+
+    function sortedThreadTimelineItems(thread) {
+      const cacheKey = String(thread && thread.id || "");
+      if (cacheKey && SORTED_THREAD_TIMELINE_CACHE.has(cacheKey)) {
+        return SORTED_THREAD_TIMELINE_CACHE.get(cacheKey);
+      }
+      const value = threadTimelineItems(thread)
+        .slice()
+        .sort((left, right) => {
+          const timeDiff = timeValue(right.timestamp) - timeValue(left.timestamp);
+          if (timeDiff !== 0) return timeDiff;
+          return (right.id || "").localeCompare(left.id || "");
+        });
+      if (cacheKey) {
+        SORTED_THREAD_TIMELINE_CACHE.set(cacheKey, value);
+      }
+      return value;
     }
 
     function hasNearbyCuratedMessages(thread, call) {
@@ -2081,57 +2302,62 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function messageHiddenMeta(message) {
+      if (MESSAGE_HIDDEN_META_CACHE.has(message)) {
+        return MESSAGE_HIDDEN_META_CACHE.get(message);
+      }
+      let value = null;
       if (message.synthetic_call || message.message_type === "Event/Call") {
         const entries = callEventParticipantEntries(message);
         const meta = hiddenEntryMeta(entries, "participants");
-        if (!meta.count) return null;
-        return {
+        value = meta.count ? {
           count: meta.count,
           label: meta.label,
           noun: "participants",
           previewLabel: previewLabelForEntries("Call event", entries, "participants"),
-        };
-      }
-      if (message.message_type === "ThreadActivity/AddMember") {
+        } : null;
+      } else if (message.message_type === "ThreadActivity/AddMember") {
         const parsed = parseAddMemberEvent(message);
         const entries = buildParticipantEntries(parsed.addedIds, parsed.addedNames);
         const meta = hiddenEntryMeta(entries, "members");
-        return {
+        value = {
           count: meta.count,
           label: meta.label,
           noun: "members",
           previewLabel: previewLabelForEntries("Member added", entries, "members"),
         };
-      }
-      if (message.message_type === "ThreadActivity/MemberJoined") {
+      } else if (message.message_type === "ThreadActivity/MemberJoined") {
         const parsed = parseMemberJoinedEvent(message);
         const entries = buildParticipantEntries(parsed.joinedIds, parsed.joinedNames);
         const meta = hiddenEntryMeta(entries, "members");
-        return {
+        value = {
           count: meta.count,
           label: meta.label,
           noun: "members",
           previewLabel: previewLabelForEntries("Member joined", entries, "members"),
         };
-      }
-      if (message.message_type === "ThreadActivity/DeleteMember") {
+      } else if (message.message_type === "ThreadActivity/DeleteMember") {
         const parsed = parseDeleteMemberEvent(message);
         const entries = buildParticipantEntries(parsed.removedIds, parsed.removedNames);
         const meta = hiddenEntryMeta(entries, "members");
-        return {
+        value = {
           count: meta.count,
           label: meta.label,
           noun: "members",
           previewLabel: previewLabelForEntries("Member removed", entries, "members"),
         };
       }
-      return null;
+      MESSAGE_HIDDEN_META_CACHE.set(message, value);
+      return value;
     }
 
     function displayMessageType(message) {
       if (message.message_type === "ThreadActivity/AddMember") return "Member Added";
       if (message.message_type === "ThreadActivity/MemberJoined") return "Member Joined";
       if (message.message_type === "ThreadActivity/DeleteMember") return "Member Removed";
+      if (messageHasAttachments(message)) {
+        if (message.content_text) return "Message + Attachment";
+        return messageAttachmentPreview(message) || "Attachment";
+      }
       return message.message_type || "";
     }
 
@@ -2301,6 +2527,12 @@ HTML_TEMPLATE = """<!doctype html>
           renderView();
           scrollMainToTop();
         });
+      }
+    }
+
+    function initAttachmentActions(scope) {
+      for (const element of scope.querySelectorAll(".copy-attachment-link")) {
+        element.addEventListener("click", () => copyText(element.dataset.url || "", "Attachment link copied"));
       }
     }
 
@@ -2531,6 +2763,223 @@ HTML_TEMPLATE = """<!doctype html>
       return when && when !== "[no_time]" ? `${name} [${when}]` : name;
     }
 
+    function attachmentNameFromUrl(value) {
+      const text = String(value || "").trim();
+      if (!text) return "";
+      try {
+        const parsed = new URL(text);
+        const parts = parsed.pathname.split("/").filter(Boolean);
+        return decodeURIComponent(parts[parts.length - 1] || "").trim();
+      } catch {
+        return "";
+      }
+    }
+
+    function attachmentExtension(value) {
+      const text = stripFcs(value || "").trim().toLowerCase();
+      if (!text) return "";
+      const target = text.includes(".") ? text : attachmentNameFromUrl(text).toLowerCase();
+      const match = target.match(/\\.([a-z0-9]{2,6})(?:$|[?#])/i);
+      return match ? match[1].toLowerCase() : "";
+    }
+
+    function normalizeAttachmentKind(value, name = "", url = "") {
+      const raw = String(value || "").trim().toLowerCase();
+      const ext = attachmentExtension(name) || attachmentExtension(url);
+      if (["image", "amsimage", "inlineimage", "jpg", "jpeg", "png", "gif", "bmp", "webp", "heic", "heif", "tif", "tiff"].includes(raw) || ["jpg", "jpeg", "png", "gif", "bmp", "webp", "heic", "heif", "tif", "tiff"].includes(ext)) {
+        return "image";
+      }
+      if (["video", "amsvideo", "mp4", "mov", "avi", "wmv", "m4v", "webm"].includes(raw) || ["mp4", "mov", "avi", "wmv", "m4v", "webm"].includes(ext)) {
+        return "video";
+      }
+      return "file";
+    }
+
+    function attachmentKindLabel(kind) {
+      const normalized = normalizeAttachmentKind(kind);
+      if (normalized === "image") return "Photo";
+      if (normalized === "video") return "Video";
+      return "File";
+    }
+
+    function attachmentHost(url) {
+      const value = String(url || "").trim();
+      if (!value) return "";
+      try {
+        return new URL(value).hostname.toLowerCase();
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function attachmentSourceLabel(attachment) {
+      const host = attachmentHost(attachment.url || attachment.preview_url || "");
+      if (!host) return "Remote attachment";
+      if (host.includes("api.ams.") || host.includes(".teams.microsoft.com")) return "Teams media";
+      if (host.includes("sharepoint.com")) return "SharePoint";
+      if (host.includes("onedrive.live.com")) return "OneDrive";
+      return "Remote attachment";
+    }
+
+    function attachmentActionLabel(attachment) {
+      const kindLabel = attachmentKindLabel(attachment.kind);
+      const sourceLabel = attachmentSourceLabel(attachment);
+      if (sourceLabel === "Teams media") {
+        if (kindLabel === "Photo") return "Open Secure Photo";
+        if (kindLabel === "Video") return "Open Secure Video";
+        return "Open Secure File";
+      }
+      if (sourceLabel === "SharePoint") return kindLabel === "File" ? "Open SharePoint File" : `Open SharePoint ${kindLabel}`;
+      if (sourceLabel === "OneDrive") return kindLabel === "File" ? "Open OneDrive File" : `Open OneDrive ${kindLabel}`;
+      if (kindLabel === "Photo") return "Open Remote Photo";
+      if (kindLabel === "Video") return "Open Remote Video";
+      return "Open Remote File";
+    }
+
+    function attachmentAccessNote(attachment) {
+      const sourceLabel = attachmentSourceLabel(attachment);
+      if (!String(attachment.url || attachment.preview_url || "").trim()) {
+        return "No recoverable attachment link was found in the export.";
+      }
+      if (sourceLabel === "Teams media") {
+        return "Teams media link. Microsoft sign-in may be required.";
+      }
+      if (sourceLabel === "SharePoint") {
+        return "SharePoint link. Microsoft sign-in may be required.";
+      }
+      if (sourceLabel === "OneDrive") {
+        return "OneDrive link. Microsoft sign-in may be required.";
+      }
+      return "Remote attachment link. Authentication may be required.";
+    }
+
+    function normalizeAttachmentRecord(value) {
+      if (!value || typeof value !== "object") return null;
+      const url = String(value.url || "").trim();
+      const previewUrl = String(value.preview_url || value.previewUrl || "").trim();
+      const name = stripFcs(value.name || "") || attachmentNameFromUrl(url || previewUrl) || attachmentKindLabel(value.kind || "file");
+      const kind = normalizeAttachmentKind(value.kind, name, url || previewUrl);
+      if (!url && !previewUrl) return null;
+      return {
+        id: String(value.id || "").trim(),
+        name,
+        url,
+        preview_url: previewUrl,
+        kind,
+      };
+    }
+
+    function extractAttachmentsFromHtml(contentHtml) {
+      const html = String(contentHtml || "").trim();
+      if (!html) return [];
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const attachments = [];
+      const seen = new Set();
+
+      function addAttachment(record) {
+        const normalized = normalizeAttachmentRecord(record);
+        if (!normalized) return;
+        const key = [normalized.id, normalized.url, normalized.preview_url, normalized.name].join("|");
+        if (seen.has(key)) return;
+        seen.add(key);
+        attachments.push(normalized);
+      }
+
+      for (const node of doc.querySelectorAll("img[src]")) {
+        const itemtype = String(node.getAttribute("itemtype") || "").toLowerCase();
+        if (itemtype.includes("emoji")) continue;
+        if (!(itemtype.includes("amsimage") || itemtype.includes("inlineimage") || itemtype.includes("amsvideo"))) continue;
+        const src = String(node.getAttribute("src") || "").trim();
+        addAttachment({
+          id: node.getAttribute("itemid") || node.getAttribute("id") || "",
+          name: node.getAttribute("alt") || node.getAttribute("title") || "",
+          url: src,
+          preview_url: src,
+          kind: itemtype,
+        });
+      }
+
+      for (const node of doc.querySelectorAll("a[href]")) {
+        const itemtype = String(node.getAttribute("itemtype") || "").toLowerCase();
+        if (!(itemtype.includes("hyperlink/files") || itemtype.includes("fileshyperlink"))) continue;
+        const href = String(node.getAttribute("href") || "").trim();
+        addAttachment({
+          name: stripFcs(node.textContent || "") || node.getAttribute("title") || "",
+          url: href,
+          kind: itemtype,
+        });
+      }
+      return attachments;
+    }
+
+    function messageAttachments(message) {
+      if (!message || typeof message !== "object") return [];
+      if (MESSAGE_ATTACHMENT_CACHE.has(message)) return MESSAGE_ATTACHMENT_CACHE.get(message);
+      const base = (message.attachments || [])
+        .map(normalizeAttachmentRecord)
+        .filter(Boolean);
+      const combined = [];
+      const seen = new Set();
+      for (const record of [...base, ...extractAttachmentsFromHtml(message.content_html || "")]) {
+        const key = [record.id, record.url, record.preview_url, record.name].join("|");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        combined.push(record);
+      }
+      MESSAGE_ATTACHMENT_CACHE.set(message, combined);
+      return combined;
+    }
+
+    function messageHasAttachments(message) {
+      return messageAttachments(message).length > 0;
+    }
+
+    function messageAttachmentPreview(message) {
+      const attachments = messageAttachments(message);
+      if (!attachments.length) return "";
+      if (attachments.length === 1) {
+        const attachment = attachments[0];
+        const kind = attachmentKindLabel(attachment.kind);
+        if (attachment.name && attachment.name !== kind) {
+          return `${kind}: ${attachment.name}`;
+        }
+        return `${kind} attachment`;
+      }
+      return `${attachments.length} attachments`;
+    }
+
+    function renderAttachmentCards(message) {
+      const attachments = messageAttachments(message);
+      if (!attachments.length) return "";
+      return `
+        <div class="attachment-stack">
+          ${attachments.map(attachment => {
+            const openUrl = attachment.url || attachment.preview_url || "";
+            const kindLabel = attachmentKindLabel(attachment.kind);
+            const actionLabel = attachmentActionLabel(attachment);
+            const accessNote = attachmentAccessNote(attachment);
+            return `
+              <div class="attachment-card">
+                <div class="attachment-meta">
+                  <div>
+                    <div class="attachment-kind">${escapeHtml(kindLabel)} Attachment</div>
+                    <div class="attachment-name">${escapeHtml(attachment.name || `${kindLabel} attachment`)}</div>
+                    ${accessNote ? `<div class="attachment-note">${escapeHtml(accessNote)}</div>` : ``}
+                  </div>
+                  ${openUrl ? `<div class="attachment-actions"><a class="call-link" href="${escapeHtml(openUrl)}" target="_blank" rel="noopener">${escapeHtml(actionLabel)}</a><button type="button" class="call-link copy-attachment-link" data-url="${escapeHtml(openUrl)}">Copy Link</button></div>` : ``}
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function displayMessageQuality(message) {
+      if (messageHasAttachments(message) && message.quality !== "event") return "attachment";
+      return message.quality || "";
+    }
+
     function messageDisplaySender(message) {
       if (message.message_type === "ThreadActivity/AddMember") {
         return systemEventActorLabel();
@@ -2619,6 +3068,8 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function callSearchText(call) {
+      const key = callKey(call);
+      if (CALL_SEARCH_TEXT_CACHE.has(key)) return CALL_SEARCH_TEXT_CACHE.get(key);
       const parts = [
         callLabel(call),
         call.call_id,
@@ -2647,7 +3098,9 @@ HTML_TEMPLATE = """<!doctype html>
         call.target_endpoint,
         call.target_phone_number,
       ];
-      return parts.filter(Boolean).join(" ").toLowerCase();
+      const value = parts.filter(Boolean).join(" ").toLowerCase();
+      CALL_SEARCH_TEXT_CACHE.set(key, value);
+      return value;
     }
 
     function callDuration(call) {
@@ -2688,11 +3141,15 @@ HTML_TEMPLATE = """<!doctype html>
           }
           return true;
         })
-        .sort((left, right) => timeValue(callPrimaryTimestamp(right)) - timeValue(callPrimaryTimestamp(left)));
+        .sort((left, right) => callPrimaryTimestampValue(right) - callPrimaryTimestampValue(left));
     }
 
     function searchMessageText(thread, message) {
+      if (MESSAGE_SEARCH_TEXT_CACHE.has(message)) {
+        return MESSAGE_SEARCH_TEXT_CACHE.get(message);
+      }
       const linkedCall = findLinkedCall(message);
+      const attachments = messageAttachments(message);
       const parts = [
         thread.label,
         thread.id,
@@ -2700,6 +3157,11 @@ HTML_TEMPLATE = """<!doctype html>
         messageDisplaySender(message),
         message.message_type,
         message.content_text,
+        message.content_html,
+        displayMessageType(message),
+        displayMessageQuality(message),
+        ...attachments.map(attachment => attachment.name),
+        ...attachments.map(attachment => attachment.url),
       ];
       if (linkedCall) {
         parts.push(
@@ -2724,7 +3186,9 @@ HTML_TEMPLATE = """<!doctype html>
         const parsed = parseDeleteMemberEvent(message);
         parts.push(parsed.actorName, ...(parsed.removedNames || []));
       }
-      return parts.filter(Boolean).join(" ").toLowerCase();
+      const value = parts.filter(Boolean).join(" ").toLowerCase();
+      MESSAGE_SEARCH_TEXT_CACHE.set(message, value);
+      return value;
     }
 
     function includeMessageInSearchResults(message) {
@@ -2741,6 +3205,12 @@ HTML_TEMPLATE = """<!doctype html>
       }
       if (isMembershipEvent(message)) {
         return renderMembershipEventBody(message, thread);
+      }
+      if (messageHasAttachments(message)) {
+        const textHtml = message.content_text
+          ? `<div class="body-text">${useHighlight ? highlightSearchHtml(message.content_text || "") : escapeHtml(message.content_text || "")}</div>`
+          : ``;
+        return `<div class="body attachment-body">${textHtml}${renderAttachmentCards(message)}</div>`;
       }
       return `<div class="body">${useHighlight ? highlightSearchHtml(message.content_text || "") : escapeHtml(message.content_text || "")}</div>`;
     }
@@ -2776,7 +3246,7 @@ HTML_TEMPLATE = """<!doctype html>
               </div>
               <div class="head">
                 <span>${typeHtml}</span>
-                <span>${escapeHtml(message.quality || "")}</span>
+                <span>${escapeHtml(displayMessageQuality(message))}</span>
               </div>
               <div class="msg-summary-note">${escapeHtml(hiddenMeta.label)}</div>
             </summary>
@@ -2793,12 +3263,12 @@ HTML_TEMPLATE = """<!doctype html>
             <span class="sender">${senderHtml}</span>
             <span>${escapeHtml(fmt(message.timestamp))}</span>
           </div>
-          <div class="head">
-            <span>${typeHtml}</span>
-            <span>${escapeHtml(message.quality || "")}</span>
-          </div>
-          ${bodyHtml}
+        <div class="head">
+          <span>${typeHtml}</span>
+          <span>${escapeHtml(displayMessageQuality(message))}</span>
         </div>
+        ${bodyHtml}
+      </div>
       `;
     }
 
@@ -2807,13 +3277,7 @@ HTML_TEMPLATE = """<!doctype html>
       if (!state.messageSearch) return groups;
 
       for (const thread of filteredThreads()) {
-        const timeline = threadTimelineItems(thread)
-          .slice()
-          .sort((left, right) => {
-            const timeDiff = timeValue(right.timestamp) - timeValue(left.timestamp);
-            if (timeDiff !== 0) return timeDiff;
-            return (right.id || "").localeCompare(left.id || "");
-          })
+        const timeline = sortedThreadTimelineItems(thread)
           .filter(messagePassesSidebarDateRange)
           .filter(messagePassesFilter)
           .filter(includeMessageInSearchResults);
@@ -2875,18 +3339,6 @@ HTML_TEMPLATE = """<!doctype html>
           <div class="preview">${escapeHtml(latestThreadPreview(thread))}</div>
         </div>
       `).join("") || `<div class="empty">No conversations match the current filters.</div>`;
-      [...threadList.querySelectorAll(".list-row")].forEach(element => {
-        element.addEventListener("click", () => {
-          state.threadId = element.dataset.id;
-          state.threadDateFrom = state.messageDateFrom || "";
-          state.threadDateTo = state.messageDateTo || "";
-          state.focusCallKey = null;
-          state.focusTimestamp = null;
-          renderMessageList();
-          renderContent();
-          scrollMainToTop();
-        });
-      });
     }
 
     function renderCallList() {
@@ -2904,13 +3356,6 @@ HTML_TEMPLATE = """<!doctype html>
           </div>
         </div>
       `).join("") || `<div class="empty">No calls match the current filters.</div>`;
-      [...callList.querySelectorAll(".list-row")].forEach(element => {
-        element.addEventListener("click", () => {
-          state.callKey = element.dataset.key;
-          renderCallList();
-          renderContent();
-        });
-      });
     }
 
     function renderSearchResultsPanel() {
@@ -2945,6 +3390,7 @@ HTML_TEMPLATE = """<!doctype html>
       `;
       initExpandableLists(contentPanel);
       initParticipantChatLinks(contentPanel);
+      initAttachmentActions(contentPanel);
 
       [...contentPanel.querySelectorAll(".open-search-thread")].forEach(element => {
         element.addEventListener("click", () => {
@@ -2971,18 +3417,13 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function renderThreadPanel() {
-      const thread = DATA.threads.find(item => item.id === state.threadId);
+      const thread = THREAD_BY_ID.get(state.threadId);
       if (!thread) {
         contentPanel.innerHTML = `<div class="empty">Select a conversation to view its data.</div>`;
         return;
       }
       const meta = thread.metadata || {};
-      const timelineMessages = threadTimelineItems(thread);
-      const allMessages = timelineMessages.slice().sort((left, right) => {
-        const timeDiff = timeValue(right.timestamp) - timeValue(left.timestamp);
-        if (timeDiff !== 0) return timeDiff;
-        return (right.id || "").localeCompare(left.id || "");
-      });
+      const allMessages = sortedThreadTimelineItems(thread);
       const rangeMessages = allMessages.filter(messagePassesCombinedDateRange);
       const linkedCalls = linkedCallsForThread(thread);
       const linkedCallCount = linkedCalls.length;
@@ -3064,6 +3505,7 @@ HTML_TEMPLATE = """<!doctype html>
       `;
       initExpandableLists(contentPanel);
       initParticipantChatLinks(contentPanel);
+      initAttachmentActions(contentPanel);
       [...contentPanel.querySelectorAll(".message-filter")].forEach(element => {
         element.addEventListener("click", () => {
           state.messageViewFilter = element.dataset.filter;
@@ -3157,7 +3599,7 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function renderCallPanel() {
-      const call = DATA.calls.find(item => callKey(item) === state.callKey);
+      const call = CALLS_BY_KEY.get(state.callKey);
         if (!call) {
           contentPanel.innerHTML = `<div class="empty">Select a call to view its data.</div>`;
           return;
@@ -3281,6 +3723,27 @@ HTML_TEMPLATE = """<!doctype html>
       renderView();
     });
 
+    threadList.addEventListener("click", event => {
+      const row = event.target.closest(".list-row[data-id]");
+      if (!row || !threadList.contains(row)) return;
+      state.threadId = row.dataset.id;
+      state.threadDateFrom = state.messageDateFrom || "";
+      state.threadDateTo = state.messageDateTo || "";
+      state.focusCallKey = null;
+      state.focusTimestamp = null;
+      renderMessageList();
+      renderContent();
+      scrollMainToTop();
+    });
+
+    callList.addEventListener("click", event => {
+      const row = event.target.closest(".list-row[data-key]");
+      if (!row || !callList.contains(row)) return;
+      state.callKey = row.dataset.key;
+      renderCallList();
+      renderContent();
+    });
+
     messageSearch.addEventListener("input", event => {
       state.messageSearch = event.target.value.trim().toLowerCase();
       renderMessageList();
@@ -3355,13 +3818,41 @@ HTML_TEMPLATE = """<!doctype html>
       renderContent();
     });
 
-    function primeCallCaches() {
-      for (const call of DATA.calls || []) {
-        isPhoneCall(call);
+    function callPrimaryTimestampValue(call) {
+      const key = callKey(call);
+      if (CALL_PRIMARY_TIME_VALUE_CACHE.has(key)) {
+        return CALL_PRIMARY_TIME_VALUE_CACHE.get(key);
+      }
+      const value = timeValue(callPrimaryTimestamp(call));
+      CALL_PRIMARY_TIME_VALUE_CACHE.set(key, value);
+      return value;
+    }
+
+    function scheduleIdleWork(callback) {
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(callback, { timeout: 250 });
+        return;
+      }
+      window.setTimeout(() => callback({ didTimeout: true, timeRemaining: () => 0 }), 48);
+    }
+
+    function primeCallCaches(deadline) {
+      const calls = DATA.calls || [];
+      let index = primeCallCaches.index || 0;
+      let processed = 0;
+      const maxBatch = deadline.didTimeout ? 12 : Number.POSITIVE_INFINITY;
+      while (index < calls.length && processed < maxBatch && (deadline.didTimeout || deadline.timeRemaining() > 4)) {
+        isPhoneCall(calls[index]);
+        index += 1;
+        processed += 1;
+      }
+      primeCallCaches.index = index;
+      if (index < calls.length) {
+        scheduleIdleWork(primeCallCaches);
       }
     }
 
-    setTimeout(primeCallCaches, 0);
+    scheduleIdleWork(primeCallCaches);
     renderView();
   </script>
 </body>
@@ -3373,18 +3864,111 @@ def load_export(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+SUMMARY_FIELDS = (
+    "threads_total",
+    "messages_total",
+    "calls_total",
+)
+PROFILE_FIELDS = (
+    "oid",
+    "display_name",
+)
+THREAD_FIELDS = (
+    "id",
+    "category",
+    "label",
+    "message_count",
+    "messages",
+    "metadata",
+    "meeting",
+    "participant_ids",
+    "participants",
+)
+THREAD_METADATA_FIELDS = ("topic",)
+THREAD_MEETING_FIELDS = ("subject", "startTime", "endTime")
+MESSAGE_FIELDS = (
+    "id",
+    "timestamp",
+    "sender_display_name",
+    "sender_id",
+    "message_type",
+    "content_html",
+    "content_text",
+    "attachments",
+    "quality",
+)
+MESSAGE_ATTACHMENT_FIELDS = ("id", "name", "url", "preview_url", "kind")
+CALL_FIELDS = (
+    "call_id",
+    "call_state",
+    "call_type",
+    "connect_time",
+    "conversation_id",
+    "direction",
+    "end_time",
+    "group_chat_thread_id",
+    "meeting_end_time",
+    "meeting_series_kind",
+    "meeting_start_time",
+    "meeting_subject",
+    "originator_display_name",
+    "originator_endpoint",
+    "originator_id",
+    "originator_phone_number",
+    "participant_display_names",
+    "participant_ids",
+    "participant_sessions",
+    "quality",
+    "shared_correlation_id",
+    "start_time",
+    "summary_text",
+    "target_display_name",
+    "target_endpoint",
+    "target_id",
+    "target_phone_number",
+    "user_participation",
+)
+CALL_PARTICIPANT_SESSION_FIELDS = ("id", "display_name")
+
+
+def pick_fields(payload: dict | None, allowed_fields: tuple[str, ...]) -> dict:
+    source = payload or {}
+    return {key: source[key] for key in allowed_fields if key in source}
+
+
 def build_browser(export_data: dict, output_path: Path) -> None:
     threads = []
     for thread in export_data.get("threads") or []:
-        row = dict(thread)
+        row = pick_fields(thread, THREAD_FIELDS)
+        row["metadata"] = pick_fields(row.get("metadata"), THREAD_METADATA_FIELDS)
+        row["meeting"] = pick_fields(row.get("meeting"), THREAD_MEETING_FIELDS)
+        row["messages"] = [
+            {
+                **pick_fields(message, MESSAGE_FIELDS),
+                "attachments": [
+                    pick_fields(attachment, MESSAGE_ATTACHMENT_FIELDS)
+                    for attachment in (message.get("attachments") or [])
+                ],
+            }
+            for message in (thread.get("messages") or [])
+        ]
         row["csv_path"] = thread_csv_path(thread)
         threads.append(row)
 
+    calls = []
+    for call in export_data.get("calls") or []:
+        row = pick_fields(call, CALL_FIELDS)
+        row["participant_sessions"] = [
+            pick_fields(session, CALL_PARTICIPANT_SESSION_FIELDS)
+            for session in (call.get("participant_sessions") or [])
+        ]
+        calls.append(row)
+
     payload = {
-        "summary": export_data.get("summary") or {},
-        "profile": export_data.get("profile") or {},
+        "summary": pick_fields(export_data.get("summary"), SUMMARY_FIELDS),
+        "profile": pick_fields(export_data.get("profile"), PROFILE_FIELDS),
         "threads": threads,
-        "calls": export_data.get("calls") or [],
+        "calls": calls,
         "guid_directory": export_data.get("guid_directory") or {},
     }
     html = HTML_TEMPLATE.replace("__DATA__", json.dumps(payload, ensure_ascii=False))

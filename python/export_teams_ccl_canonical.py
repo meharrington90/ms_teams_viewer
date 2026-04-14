@@ -6,7 +6,9 @@ import json
 import re
 from contextlib import ExitStack, contextmanager, redirect_stderr, redirect_stdout
 from datetime import datetime, timedelta, timezone
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from dump_teams_indexeddb_ccl import iter_wrapper_databases, load_ccl, resolve_teams_source
 from teams_ccl_common import (
@@ -52,6 +54,8 @@ EVENT_CALL_STATE_PRIORITY = {
     "rejected": 2,
     "cancelled": 2,
 }
+ATTACHMENT_IMAGE_TYPES = {"png", "jpg", "jpeg", "gif", "bmp", "webp", "heic", "heif", "tif", "tiff"}
+ATTACHMENT_VIDEO_TYPES = {"mp4", "mov", "avi", "wmv", "m4v", "webm"}
 
 
 def safe_text(value) -> str | None:
@@ -103,6 +107,163 @@ def classify_quality(message_type: str | None, content_text: str | None) -> str:
     if len(content_text.strip()) <= 1:
         return "residual"
     return "curated"
+
+
+def parse_json_list(value) -> list[dict]:
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, dict)]
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return []
+        if isinstance(parsed, list):
+            return [item for item in parsed if isinstance(item, dict)]
+    return []
+
+
+def file_name_from_url(value: str | None) -> str | None:
+    cleaned = clean_text(value)
+    if not cleaned:
+        return None
+    try:
+        path = urlparse(cleaned).path or ""
+    except ValueError:
+        return None
+    name = unquote(path.rsplit("/", 1)[-1]) if path else ""
+    return clean_text(name) or None
+
+
+def attachment_kind(name: str | None, url: str | None, file_type: str | None = None) -> str:
+    raw_type = clean_text(file_type) or ""
+    if raw_type.startswith("http://schema.skype.com/"):
+        raw_type = raw_type.rsplit("/", 1)[-1]
+    raw_type = raw_type.lower()
+    if not raw_type:
+        source_name = clean_text(name) or file_name_from_url(url) or ""
+        if "." in source_name:
+            raw_type = source_name.rsplit(".", 1)[-1].lower()
+    if raw_type in ATTACHMENT_IMAGE_TYPES or raw_type in {"amsimage", "inlineimage"}:
+        return "image"
+    if raw_type in ATTACHMENT_VIDEO_TYPES or raw_type == "amsvideo":
+        return "video"
+    return "file"
+
+
+def append_attachment(attachments: list[dict], attachment: dict | None) -> None:
+    if not isinstance(attachment, dict):
+        return
+    cleaned = {
+        key: clean_text(value) if isinstance(value, str) else value
+        for key, value in attachment.items()
+        if value is not None and value != "" and value != []
+    }
+    if not cleaned.get("url") and not cleaned.get("preview_url"):
+        return
+    identity = (
+        cleaned.get("id") or "",
+        cleaned.get("url") or "",
+        cleaned.get("preview_url") or "",
+        cleaned.get("name") or "",
+    )
+    if any(
+        (
+            existing.get("id") or "",
+            existing.get("url") or "",
+            existing.get("preview_url") or "",
+            existing.get("name") or "",
+        ) == identity
+        for existing in attachments
+    ):
+        return
+    attachments.append(cleaned)
+
+
+class MessageAttachmentHtmlParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.attachments: list[dict] = []
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        attrs_dict = {str(key).lower(): value for key, value in attrs}
+        itemtype = clean_text(attrs_dict.get("itemtype")) or ""
+        lowered_type = itemtype.lower()
+
+        if tag.lower() == "img":
+            if lowered_type.endswith("/emoji"):
+                return
+            if "amsimage" not in lowered_type and "inlineimage" not in lowered_type and "amsvideo" not in lowered_type:
+                return
+            src = clean_text(attrs_dict.get("src"))
+            name = clean_text(attrs_dict.get("alt")) or ("Video" if "amsvideo" in lowered_type else "Image")
+            append_attachment(
+                self.attachments,
+                {
+                    "id": clean_text(attrs_dict.get("itemid") or attrs_dict.get("id")),
+                    "name": name,
+                    "url": src,
+                    "preview_url": src,
+                    "kind": attachment_kind(name, src, itemtype),
+                },
+            )
+            return
+
+        if tag.lower() == "a":
+            href = clean_text(attrs_dict.get("href"))
+            if "hyperlink/files" not in lowered_type and "fileshyperlink" not in lowered_type:
+                return
+            name = clean_text(attrs_dict.get("title")) or file_name_from_url(href) or "File"
+            append_attachment(
+                self.attachments,
+                {
+                    "name": name,
+                    "url": href,
+                    "kind": attachment_kind(name, href, itemtype),
+                },
+            )
+
+
+def extract_html_attachments(content_html: str | None) -> list[dict]:
+    html = clean_text(content_html)
+    if not html:
+        return []
+    parser = MessageAttachmentHtmlParser()
+    try:
+        parser.feed(html)
+    except Exception:
+        return []
+    return parser.attachments
+
+
+def extract_message_attachments(raw: dict, content_html: str | None) -> list[dict]:
+    attachments: list[dict] = []
+    properties = raw.get("properties") or {}
+    files = parse_json_list(properties.get("files")) if isinstance(properties, dict) else []
+    for item in files:
+        file_info = item.get("fileInfo") or {}
+        preview = item.get("filePreview") or {}
+        url = (
+            clean_text(file_info.get("shareUrl"))
+            or clean_text(file_info.get("fileUrl"))
+            or clean_text(item.get("objectUrl"))
+            or clean_text(item.get("baseUrl"))
+        )
+        preview_url = clean_text(preview.get("previewUrl")) or clean_text(item.get("previewUrl"))
+        name = clean_text(item.get("fileName") or item.get("title")) or file_name_from_url(url) or "File"
+        append_attachment(
+            attachments,
+            {
+                "id": clean_text(item.get("itemid") or item.get("id")),
+                "name": name,
+                "url": url,
+                "preview_url": preview_url,
+                "kind": attachment_kind(name, url, item.get("fileType") or item.get("type")),
+            },
+        )
+
+    for attachment in extract_html_attachments(content_html):
+        append_attachment(attachments, attachment)
+    return attachments
 
 
 def flatten_members(members: list[dict], guid_to_name: dict[str, str]) -> tuple[list[str], list[str]]:
@@ -876,6 +1037,10 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
                     else:
                         content_html = None
                         content_text = safe_text(content_string if content_string is not None else content)
+                    attachments = extract_message_attachments(raw, content_html)
+                    quality = classify_quality(message_type, content_text)
+                    if attachments and quality == "residual":
+                        quality = "attachment"
 
                     sender_name = safe_text(raw.get("imDisplayName") or raw.get("fromDisplayNameInToken"))
                     sender_id = extract_guid(raw.get("creator")) or extract_guid(raw.get("fromUserId")) or extract_guid(raw.get("from"))
@@ -895,10 +1060,11 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
                         "content_type": content_type,
                         "content_html": content_html,
                         "content_text": content_text,
-                        "quality": classify_quality(message_type, content_text),
+                        "attachments": attachments,
+                        "quality": quality,
                         "source": "ccl:replychains",
                     }
-                    message = {key: value for key, value in message.items() if value not in {None, ""}}
+                    message = {key: value for key, value in message.items() if value is not None and value != ""}
 
                     key = (thread_id, message_id)
                     existing = best_messages.get(key)
@@ -1088,7 +1254,7 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
         "limitations": [
             "Built from structured IndexedDB object stores using ccl_chromium_reader and the matching blob directory.",
             "A small number of keys reported decode errors during CCL iteration and may be missing from this export.",
-            "This canonical export does not yet merge all auxiliary stores such as reactions, attachments, or notification surfaces.",
+            "This canonical export now surfaces inline image/file attachments from replychains, but it still does not merge every auxiliary store such as full reaction history or notification surfaces.",
         ],
     }
 
