@@ -523,6 +523,7 @@ HTML_TEMPLATE = """<!doctype html>
         <select id="categoryFilter">
           <option value="">All message categories</option>
           <option value="chat_space">Chats</option>
+          <option value="team_chat">Meeting chats</option>
           <option value="thread">Group chats</option>
         </select>
       </div>
@@ -843,13 +844,21 @@ HTML_TEMPLATE = """<!doctype html>
 
     function prettyCategory(category) {
       if (category === "chat_space") return "Chat";
-      if (category === "meeting") return "Meeting";
+      if (category === "team_chat" || category === "meeting") return "Meeting Chat";
       if (category === "thread") return "Group Chat";
       return category || "";
     }
 
     function isChatBasedThread(thread) {
-      return ["chat_space", "thread", "meeting"].includes(thread.category);
+      return ["chat_space", "thread", "team_chat", "meeting"].includes(thread.category);
+    }
+
+    function matchesThreadCategory(thread, category) {
+      if (!category) return true;
+      if (category === "team_chat") {
+        return ["team_chat", "meeting"].includes(thread.category);
+      }
+      return thread.category === category;
     }
 
     function threadSearchText(thread) {
@@ -962,10 +971,8 @@ HTML_TEMPLATE = """<!doctype html>
     function filteredThreads() {
       return DATA.threads
         .filter(thread => {
-          if (thread.message_count <= 0 && thread.category !== "meeting") return false;
-          if (state.category === "chat_space") {
-            if (!["chat_space", "meeting"].includes(thread.category)) return false;
-          } else if (state.category && thread.category !== state.category) {
+          if (thread.message_count <= 0 && !["team_chat", "meeting"].includes(thread.category)) return false;
+          if (!matchesThreadCategory(thread, state.category)) {
             return false;
           }
           if (state.messageSearch && !textMatchesSearch(threadSearchText(thread))) return false;
@@ -1632,7 +1639,7 @@ HTML_TEMPLATE = """<!doctype html>
       const eventCount = messages.filter(message => message.quality === "event").length;
       const curatedCount = messages.filter(message => message.quality !== "event").length;
       const meeting = thread.meeting || {};
-      const showCompactChatMeta = isChatBasedThread(thread);
+      const showCompactChatMeta = ["chat_space", "thread"].includes(thread.category);
       contentPanel.innerHTML = `
         <div class="title">
           <h2>${escapeHtml(stripFcs(thread.label || thread.id))}</h2>

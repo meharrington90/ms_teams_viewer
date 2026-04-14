@@ -6,10 +6,10 @@ from pathlib import Path
 
 
 THREAD_ID_PATTERN = (
-    r"(?:E19:meeting_[A-Za-z0-9_-]+@thread\.v2|(?:-19:|19:)[^\"\x00]+@(?:thread\.v2|unq\.gbl\.spaces)|48:calllogs)"
+    r"(?:E?19:meeting_[A-Za-z0-9_-]+@thread\.v2|(?:-19:|19:)[^\s\"\x00]+@(?:thread\.v2|unq\.gbl\.spaces)|48:calllogs)"
 )
 STRICT_THREAD_ID_RE = re.compile(
-    r"^(?:48:calllogs|E19:meeting_[A-Za-z0-9_-]+@thread\.v2|-19:[0-9a-f]+@thread\.v2|19:[0-9a-f]+@thread\.v2|19:[0-9a-f-]+_[0-9a-f-]+@unq\.gbl\.spaces)$",
+    r"^(?:48:calllogs|E?19:meeting_[A-Za-z0-9_-]+@thread\.v2|-19:[^\s\"\x00]+@thread\.v2|19:[^\s\"\x00]+@thread\.v2|19:[^\s\"\x00]+@unq\.gbl\.spaces)$",
     re.I,
 )
 GUID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
@@ -62,11 +62,12 @@ def normalize_thread_id(value: str | None) -> str | None:
     return None
 
 
-def classify_thread(thread_id: str) -> str:
+def classify_thread(thread_id: str, thread_type: str | None = None) -> str:
     if thread_id == "48:calllogs":
         return "call_logs"
-    if thread_id.startswith("E19:meeting_"):
-        return "meeting"
+    normalized_type = (clean_text(thread_type) or "").lower()
+    if normalized_type == "meeting" or thread_id.startswith(("E19:meeting_", "19:meeting_")):
+        return "team_chat"
     if thread_id.endswith("@unq.gbl.spaces"):
         return "chat_space"
     if thread_id.endswith("@thread.v2"):

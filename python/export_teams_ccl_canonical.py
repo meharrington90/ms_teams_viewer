@@ -10,6 +10,7 @@ from pathlib import Path
 from dump_teams_indexeddb_ccl import iter_wrapper_databases, load_ccl, resolve_teams_source
 from teams_ccl_common import (
     GUID_RE,
+    classify_thread,
     clean_text,
     html_to_text,
     init_thread_record,
@@ -191,7 +192,9 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
                     continue
                 thread = threads.setdefault(thread_id, init_thread_record(thread_id))
                 thread["metadata_quality"] = "detailed"
-                thread_types[thread_id] = safe_text(value.get("type")) or ""
+                thread_type = safe_text(value.get("type")) or ""
+                thread_types[thread_id] = thread_type
+                thread["category"] = classify_thread(thread_id, thread_type)
 
                 title = safe_text(value.get("title"))
                 if title:
@@ -199,6 +202,8 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
                     thread["label"] = title
 
                 metadata = thread["metadata"]
+                if thread_type:
+                    metadata["conversation_type"] = thread_type
                 thread_properties = value.get("threadProperties") or {}
                 if isinstance(thread_properties, dict):
                     mapping = {
@@ -503,7 +508,7 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
     ordered_threads = sorted(
         threads.values(),
         key=lambda item: (
-            item["category"] != "meeting",
+            item["category"] not in {"team_chat", "meeting"},
             item["metadata_quality"] != "detailed",
             -item.get("message_count", 0),
             item["label"],
