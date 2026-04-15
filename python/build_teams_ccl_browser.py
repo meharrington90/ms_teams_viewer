@@ -29,69 +29,625 @@ HTML_TEMPLATE = """<!doctype html>
   <title>Michaelsoft Teams</title>
   <style>
     :root {
-      --bg: #f4f1ea;
-      --panel: #fffaf2;
-      --ink: #1f2a2b;
-      --muted: #667371;
-      --line: #d7d0c4;
-      --accent: #1d6f6d;
-      --accent-soft: #dcefed;
-      --warn: #b55834;
-      --shadow: 0 8px 24px rgba(31,42,43,.08);
+      --bg: #eef4ff;
+      --bg-alt: #fff4e7;
+      --panel: rgba(255,255,255,.82);
+      --panel-strong: rgba(255,255,255,.96);
+      --panel-soft: rgba(244,247,255,.88);
+      --ink: #14233b;
+      --muted: #5f6f86;
+      --muted-strong: #415068;
+      --line: rgba(123,145,179,.24);
+      --line-strong: rgba(88,110,147,.34);
+      --accent: #2563eb;
+      --accent-strong: #1d4ed8;
+      --accent-soft: rgba(37,99,235,.12);
+      --accent-soft-strong: rgba(37,99,235,.18);
+      --accent-alt: #f97316;
+      --accent-alt-soft: rgba(249,115,22,.14);
+      --success: #0f766e;
+      --success-soft: rgba(15,118,110,.16);
+      --warn: #c2410c;
+      --warn-soft: rgba(194,65,12,.14);
+      --shadow: 0 16px 34px rgba(15,23,42,.09);
+      --shadow-soft: 0 10px 24px rgba(37,99,235,.10);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
+      --ease: cubic-bezier(.2,.8,.2,1);
       --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      --sans: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+      --sans: "Avenir Next", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --display: "Avenir Next", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+    html {
+      color-scheme: light;
     }
     *,
     *::before,
-    *::after { box-sizing: border-box; }
+    *::after {
+      box-sizing: border-box;
+    }
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(77,102,140,.34) transparent;
+    }
+    *::-webkit-scrollbar {
+      width: 11px;
+      height: 11px;
+    }
+    *::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    *::-webkit-scrollbar-thumb {
+      background: rgba(77,102,140,.28);
+      border: 3px solid transparent;
+      border-radius: 999px;
+      background-clip: padding-box;
+    }
+    *::-webkit-scrollbar-thumb:hover {
+      background: rgba(77,102,140,.44);
+      background-clip: padding-box;
+    }
+    ::selection {
+      background: rgba(37,99,235,.22);
+    }
     body {
       margin: 0;
-      font-family: var(--sans);
-      color: var(--ink);
-      background-color: var(--bg);
-      background:
-        radial-gradient(circle at top left, rgba(29,111,109,.08), transparent 28%),
-        radial-gradient(circle at bottom right, rgba(181,88,52,.08), transparent 24%),
-        linear-gradient(180deg, #f7f4ee 0%, #efe9df 100%);
       min-height: 100vh;
       height: 100vh;
       overflow: hidden;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(37,99,235,.18), transparent 26%),
+        radial-gradient(circle at 100% 0%, rgba(249,115,22,.16), transparent 24%),
+        radial-gradient(circle at 55% 100%, rgba(15,118,110,.14), transparent 24%),
+        linear-gradient(180deg, #f8fbff 0%, #edf3ff 52%, #fff8ef 100%);
+      padding: 8px;
+      position: relative;
+    }
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      pointer-events: none;
+      inset: auto;
+      filter: blur(36px);
+      opacity: .75;
+      z-index: 0;
+    }
+    body::before {
+      width: 280px;
+      height: 280px;
+      top: 5%;
+      right: 10%;
+      border-radius: 999px;
+      background: rgba(37,99,235,.14);
+    }
+    body::after {
+      width: 260px;
+      height: 260px;
+      left: 3%;
+      bottom: 4%;
+      border-radius: 999px;
+      background: rgba(249,115,22,.14);
+    }
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+    button {
+      appearance: none;
+      border: 0;
+      background: none;
+      color: inherit;
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-family: var(--display);
+      font-weight: 700;
+      letter-spacing: 0;
     }
     .app {
+      position: relative;
+      z-index: 1;
       display: grid;
-      grid-template-columns: 360px minmax(0, 1fr);
-      min-height: 0;
-      height: 100vh;
-      max-width: 100vw;
-      overflow: hidden;
+      grid-template-columns: 380px minmax(0, 1fr);
+      gap: 10px;
+      width: 100%;
+      height: calc(100vh - 16px);
+      max-width: none;
+      margin: 0;
+    }
+    .sidebar,
+    .overview-panel,
+    .content-panel {
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
     }
     .sidebar {
-      border-right: 1px solid var(--line);
-      background: rgba(255,250,242,.88);
-      backdrop-filter: blur(8px);
-      padding: 20px;
+      position: relative;
       display: flex;
       flex-direction: column;
-      gap: 0;
-      height: 100vh;
+      min-width: 0;
       min-height: 0;
       overflow: hidden;
+      border-radius: var(--radius-xl);
+      padding: 11px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.84) 0%, rgba(246,249,255,.78) 100%);
+    }
+    .sidebar-top {
+      display: grid;
+      gap: 8px;
       min-width: 0;
+      padding-bottom: 8px;
+    }
+    .brand-card {
+      position: relative;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+      padding: 18px;
+      border-radius: 20px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255,255,255,.26), transparent 18%),
+        linear-gradient(140deg, #173d8f 0%, #2563eb 42%, #3478f6 62%, #fb923c 100%);
+      color: #fff;
+      box-shadow: 0 16px 34px rgba(37,99,235,.22);
+    }
+    .brand-card > * {
+      position: relative;
+      z-index: 1;
+    }
+    .brand-kicker,
+    .kicker {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      font-weight: 700;
+    }
+    .brand-kicker {
+      color: rgba(255,255,255,.82);
+      order: 2;
+    }
+    .brand-title {
+      font-family: var(--display);
+      font-size: 28px;
+      line-height: 1.05;
+      letter-spacing: 0;
+      font-weight: 700;
+      order: 1;
+    }
+    .brand-profile {
+      font-size: 13px;
+      line-height: 1.45;
+      color: rgba(255,255,255,.86);
+      max-width: 100%;
+    }
+    .brand-profile {
+      order: 3;
+    }
+    .view-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      padding: 3px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.72);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+    }
+    .tab {
+      border: 1px solid transparent;
+      border-radius: 13px;
+      min-height: 40px;
+      padding: 6px 10px;
+      color: var(--muted-strong);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition:
+        transform .18s var(--ease),
+        border-color .18s var(--ease),
+        color .18s var(--ease),
+        background .18s var(--ease),
+        box-shadow .18s var(--ease);
+    }
+    .tab:hover {
+      transform: translateY(-1px);
+      color: var(--ink);
+    }
+    .tab.active {
+      color: var(--accent-strong);
+      background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(232,241,255,.98));
+      border-color: rgba(37,99,235,.18);
+      box-shadow: 0 8px 22px rgba(37,99,235,.14);
+    }
+    .toolbar {
+      display: grid;
+      gap: 7px;
+      padding: 10px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.84), rgba(245,248,255,.78));
+      box-shadow: 0 10px 30px rgba(15,23,42,.07);
+      align-items: stretch;
+    }
+    .hidden {
+      display: none !important;
+    }
+    input,
+    select {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 42px;
+      padding: 8px 11px;
+      border-radius: 12px;
+      border: 1px solid rgba(88,110,147,.16);
+      background: rgba(255,255,255,.96);
+      color: var(--ink);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.78),
+        0 1px 2px rgba(15,23,42,.04);
+      transition:
+        border-color .18s var(--ease),
+        box-shadow .18s var(--ease),
+        transform .18s var(--ease);
+    }
+    input::placeholder {
+      color: #8191a6;
+    }
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: rgba(37,99,235,.46);
+      box-shadow:
+        0 0 0 4px rgba(37,99,235,.12),
+        0 12px 24px rgba(37,99,235,.08);
+      transform: translateY(-1px);
+    }
+    .tab:focus-visible,
+    .seg-btn:focus-visible,
+    .call-link:focus-visible,
+    .filter-pill:focus-visible,
+    .toggle-expandable-list:focus-visible {
+      outline: none;
+      box-shadow:
+        0 0 0 4px rgba(37,99,235,.12),
+        0 14px 24px rgba(37,99,235,.12);
+    }
+    .toolbar > * {
+      min-width: 0;
+    }
+    .chip-row,
+    .chips,
+    .jump-list,
+    .call-event-actions,
+    .segmented {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .active-filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 0;
+    }
+    .sidebar-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(88,110,147,.18), transparent);
+      margin-right: 2px;
+      flex: 0 0 auto;
+    }
+    .sidebar-list-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding: 8px 1px 1px;
+      scrollbar-gutter: stable;
+    }
+    .chip,
+    .filter-pill,
+    .list-pill,
+    .msg-mini-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      line-height: 1;
+      border: 1px solid rgba(88,110,147,.18);
+      background: rgba(255,255,255,.9);
+      color: var(--muted-strong);
+      white-space: nowrap;
+    }
+    .chip-strong {
+      color: var(--accent-strong);
+      background: rgba(232,241,255,.95);
+      border-color: rgba(37,99,235,.20);
+      box-shadow: 0 8px 20px rgba(37,99,235,.10);
+    }
+    .hotkey-chip {
+      background: rgba(255,255,255,.72);
+    }
+    .filter-pill {
+      cursor: pointer;
+      transition:
+        transform .18s var(--ease),
+        background .18s var(--ease),
+        border-color .18s var(--ease);
+    }
+    .filter-pill:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.98);
+      border-color: rgba(37,99,235,.24);
+    }
+    .filter-pill .dismiss {
+      color: var(--accent-strong);
+      font-weight: 700;
+    }
+    .list {
+      display: grid;
+      gap: 7px;
+    }
+    .list-row {
+      position: relative;
+      min-width: 0;
+      overflow: hidden;
+      padding: 10px 11px;
+      border-radius: 16px;
+      border: 1px solid transparent;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.86), rgba(245,248,255,.70));
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.78),
+        0 6px 12px rgba(15,23,42,.04);
+      cursor: pointer;
+      transition:
+        transform .18s var(--ease),
+        box-shadow .18s var(--ease),
+        border-color .18s var(--ease),
+        background .18s var(--ease);
+    }
+    .list-row::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      border-radius: 999px;
+      background: var(--row-accent, var(--accent));
+      opacity: .72;
+    }
+    .list-row:hover {
+      transform: translateY(-2px);
+      border-color: rgba(88,110,147,.20);
+      box-shadow:
+        0 12px 20px rgba(15,23,42,.06),
+        0 0 0 1px rgba(255,255,255,.55) inset;
+    }
+    .list-row.active {
+      border-color: rgba(37,99,235,.22);
+      background:
+        linear-gradient(180deg, rgba(236,243,255,.98), rgba(248,250,255,.92));
+      box-shadow:
+        0 14px 24px rgba(37,99,235,.10),
+        0 0 0 1px rgba(255,255,255,.75) inset;
+    }
+    .list-row strong,
+    .list-title {
+      display: block;
+      font-size: 14px;
+      line-height: 1.28;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .list-row-top,
+    .list-stats,
+    .list-row .meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+    .list-row-top {
+      margin-bottom: 5px;
+    }
+    .list-row .meta,
+    .list-time,
+    .list-stats {
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .list-stats {
+      margin-top: 6px;
+      color: var(--muted-strong);
+    }
+    .list-pill {
+      color: var(--muted-strong);
+      background: rgba(255,255,255,.76);
+    }
+    .preview {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .main {
-      padding: 20px 24px 32px;
-      overflow: auto;
-      min-height: 0;
+      position: relative;
       min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      padding-right: 0;
     }
-    h1, h2, h3 { margin: 0; font-weight: 600; }
+    .main-scroll {
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      overflow: auto;
+      scrollbar-gutter: stable;
+    }
+    .main-shell {
+      display: grid;
+      gap: 8px;
+      min-height: 100%;
+      align-content: start;
+      padding-bottom: 6px;
+    }
+    .panel {
+      min-width: 0;
+      border-radius: var(--radius-xl);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.88), rgba(246,249,255,.78));
+    }
+    .overview-panel {
+      position: sticky;
+      top: 0;
+      z-index: 6;
+      padding: 14px 16px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.94), rgba(244,248,255,.90));
+      box-shadow:
+        var(--shadow),
+        0 0 0 1px rgba(255,255,255,.48) inset;
+    }
+    .overview-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .overview-quote {
+      flex: 1 1 720px;
+      max-width: min(980px, 100%);
+      color: var(--muted-strong);
+      font-size: 12px;
+      line-height: 1.4;
+      font-style: italic;
+      font-weight: 500;
+    }
+    .overview-subtle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .overview-side {
+      display: grid;
+      gap: 4px;
+      justify-items: end;
+      text-align: right;
+    }
+    .overview-mode {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--accent-strong);
+      background: rgba(232,241,255,.92);
+      border: 1px solid rgba(37,99,235,.18);
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+    .card {
+      position: relative;
+      overflow: hidden;
+      padding: 10px 10px 12px;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(88,110,147,.16);
+      box-shadow:
+        0 12px 28px rgba(15,23,42,.06),
+        0 0 0 1px rgba(255,255,255,.64) inset;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.96), rgba(245,248,255,.86));
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      width: 130px;
+      height: 130px;
+      border-radius: 999px;
+      right: -38px;
+      top: -38px;
+      background: var(--card-glow, rgba(37,99,235,.12));
+    }
+    .threads-card {
+      --card-glow: rgba(37,99,235,.14);
+    }
+    .messages-card {
+      --card-glow: rgba(15,118,110,.14);
+    }
+    .calls-card {
+      --card-glow: rgba(249,115,22,.18);
+    }
+    .card .label {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .card .value {
+      position: relative;
+      z-index: 1;
+      font-family: var(--display);
+      font-size: 28px;
+      line-height: .95;
+      color: var(--ink);
+      letter-spacing: -.03em;
+    }
+    .content-panel {
+      padding: 15px;
+      border-radius: var(--radius-xl);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.84), rgba(247,249,255,.78));
+      box-shadow:
+        var(--shadow),
+        0 0 0 1px rgba(255,255,255,.46) inset;
+    }
     .title {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 7px;
+      margin-bottom: 8px;
       min-width: 0;
     }
     .title > * {
@@ -103,329 +659,264 @@ HTML_TEMPLATE = """<!doctype html>
       overflow-wrap: anywhere;
       word-break: break-word;
     }
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-      margin: 16px 0 20px;
+    .detail-hero,
+    .detail-toolbar,
+    .search-group,
+    .meta-block,
+    .stat-card {
+      border: 1px solid rgba(88,110,147,.16);
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.92), rgba(245,248,255,.82));
+      box-shadow:
+        0 8px 18px rgba(15,23,42,.04),
+        0 0 0 1px rgba(255,255,255,.56) inset;
     }
-    .card, .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      box-shadow: var(--shadow);
-    }
-    .card { padding: 12px 14px; }
-    .card .label {
-      font-size: 12px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      margin-bottom: 6px;
-    }
-    .card .value {
-      font-size: 28px;
-      line-height: 1;
-      color: var(--accent);
-    }
-    .view-tabs {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
+    .detail-hero {
+      padding: 13px;
       margin-bottom: 10px;
+      position: relative;
+      overflow: hidden;
     }
-    .tab {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 5px 12px;
-      background: rgba(255,255,255,.72);
-      color: var(--ink);
-      font: inherit;
-      cursor: pointer;
-      min-height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background .15s ease, border-color .15s ease, transform .15s ease;
-    }
-    .tab:hover { transform: translateY(-1px); }
-    .tab.active {
-      background: var(--accent-soft);
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-    .toolbar {
-      display: grid;
-      gap: 8px;
-      margin-bottom: 10px;
-      align-items: stretch;
-    }
-    .hidden { display: none !important; }
-    input, select {
-      width: 100%;
-      min-width: 0;
-      max-width: 100%;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 8px 12px;
-      background: #fff;
-      color: var(--ink);
-      font: inherit;
-      min-height: 46px;
-      line-height: 1.25;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
-    }
-    input:focus, select:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(29,111,109,.12);
-    }
-    .toolbar > * {
-      min-width: 0;
-    }
-    .chip-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 0;
-    }
-    .sidebar-top {
-      display: grid;
-      gap: 0;
-      min-width: 0;
-      padding-bottom: 12px;
-    }
-    .sidebar-divider {
-      height: 1px;
-      background: var(--line);
-      margin-right: 2px;
-      flex: 0 0 auto;
-    }
-    .sidebar-list-wrap {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow: auto;
-      padding-top: 12px;
-      scrollbar-gutter: stable;
-    }
-    .chip {
-      padding: 6px 10px;
+    .detail-hero::after {
+      content: "";
+      position: absolute;
+      inset: -40px -30px auto auto;
+      width: 140px;
+      height: 140px;
       border-radius: 999px;
-      background: #fff;
-      border: 1px solid var(--line);
-      font-size: 12px;
+      background: rgba(37,99,235,.08);
+    }
+    .detail-hero > * {
+      position: relative;
+      z-index: 1;
+    }
+    .detail-hero .title {
+      margin-bottom: 4px;
+    }
+    .detail-subtle,
+    .subtle {
       color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
     }
-    .list {
-      display: grid;
-      gap: 6px;
-    }
-    .list-row {
-      padding: 9px 12px;
-      border-radius: 14px;
-      border: 1px solid transparent;
-      background: rgba(255,255,255,.7);
-      cursor: pointer;
-      transition: transform .15s ease, border-color .15s ease, background .15s ease;
-      min-width: 0;
-      overflow: hidden;
-    }
-    .list-row:hover { transform: translateY(-1px); border-color: var(--line); }
-    .list-row.active { border-color: var(--accent); background: var(--accent-soft); }
-    .list-row > div {
-      min-width: 0;
-    }
-    .list-row strong {
-      display: block;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    .list-row .meta {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 6px;
-      align-items: baseline;
-      color: var(--muted);
-      font-size: 12px;
-      margin-top: 4px;
-      min-width: 0;
-    }
-    .list-row .meta span {
-      min-width: 0;
-    }
-    .list-row .meta span:last-child {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      justify-self: end;
-    }
-    .preview {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.3;
-      margin-top: 6px;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    .panel {
-      padding: 18px 20px;
-      margin-bottom: 16px;
-      min-width: 0;
+    .participant-cloud {
+      margin-top: 10px;
     }
     .detail-toolbar {
       display: grid;
-      gap: 10px;
-      margin-top: 14px;
+      gap: 7px;
+      margin: 10px 0;
+      padding: 10px;
     }
     .toolbar-row {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
       align-items: center;
+      gap: 7px;
       flex-wrap: wrap;
     }
-    .range-controls {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: end;
-    }
+    .range-controls,
     .sidebar-range-controls {
       display: flex;
+      gap: 7px;
       flex-wrap: wrap;
-      gap: 6px;
       align-items: end;
       width: 100%;
     }
+    .sidebar-range-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .sidebar-range-controls .range-field {
-      flex: 0 1 calc((100% - 6px) / 2);
-      width: calc((100% - 6px) / 2);
       min-width: 0;
     }
     .sidebar-range-controls .range-action {
-      flex: 0 0 100%;
-      width: 100%;
-      min-height: 40px;
+      grid-column: 1 / -1;
+      min-height: 36px;
       border-radius: 12px;
     }
-    .toolbar-divider {
+    .toolbar-divider,
+    .search-group-divider {
       height: 1px;
-      background: var(--line);
       width: 100%;
+      background: linear-gradient(90deg, transparent, rgba(88,110,147,.18), transparent);
     }
     .range-field {
       display: grid;
       gap: 3px;
-      min-width: 150px;
+      min-width: 140px;
     }
     .range-field span {
       color: var(--muted);
       font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
       text-transform: uppercase;
-      letter-spacing: .06em;
-    }
-    .segmented {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
     }
     .seg-btn {
-      border: 1px solid var(--line);
+      padding: 6px 9px;
       border-radius: 999px;
-      background: rgba(255,255,255,.75);
-      color: var(--muted);
-      font: inherit;
-      padding: 6px 10px;
+      border: 1px solid rgba(88,110,147,.16);
+      background: rgba(255,255,255,.86);
+      color: var(--muted-strong);
+      font-size: 12px;
+      line-height: 1.2;
+      font-weight: 600;
       cursor: pointer;
+      transition:
+        transform .18s var(--ease),
+        border-color .18s var(--ease),
+        background .18s var(--ease),
+        color .18s var(--ease),
+        box-shadow .18s var(--ease);
+    }
+    .seg-btn:hover,
+    .call-link:hover,
+    .toggle-expandable-list:hover {
+      transform: translateY(-1px);
     }
     .seg-btn.active {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: var(--accent-soft);
+      color: var(--accent-strong);
+      border-color: rgba(37,99,235,.22);
+      background: rgba(232,241,255,.96);
+      box-shadow: 0 6px 12px rgba(37,99,235,.08);
+    }
+    .call-link,
+    .toggle-expandable-list {
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(37,99,235,.18);
+      background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(232,241,255,.92));
+      color: var(--accent-strong);
+      font-size: 12px;
+      line-height: 1.2;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition:
+        transform .18s var(--ease),
+        box-shadow .18s var(--ease),
+        border-color .18s var(--ease),
+        background .18s var(--ease);
+      box-shadow: 0 4px 10px rgba(37,99,235,.06);
+    }
+    .call-link:hover,
+    .toggle-expandable-list:hover {
+      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(224,236,255,.96));
+      border-color: rgba(37,99,235,.28);
+      box-shadow: 0 8px 14px rgba(37,99,235,.08);
+    }
+    .call-link:disabled {
+      cursor: not-allowed;
+      opacity: .48;
+      box-shadow: none;
+    }
+    .scroll-top-button {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(37,99,235,.22);
+      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(232,241,255,.94));
+      color: var(--accent-strong);
+      font-size: 14px;
+      line-height: 1;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 18px rgba(15,23,42,.10);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px) scale(.96);
+      transition:
+        opacity .18s var(--ease),
+        transform .18s var(--ease),
+        background .18s var(--ease),
+        border-color .18s var(--ease),
+        box-shadow .18s var(--ease);
+      z-index: 15;
+    }
+    .scroll-top-button.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+    .scroll-top-button:hover {
+      background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(224,236,255,.96));
+      border-color: rgba(37,99,235,.30);
+      box-shadow: 0 10px 22px rgba(15,23,42,.12);
+    }
+    .scroll-top-button:focus-visible {
+      outline: none;
+      box-shadow:
+        0 0 0 4px rgba(37,99,235,.12),
+        0 10px 22px rgba(15,23,42,.14);
+    }
+    .stat-strip,
+    .meta-grid {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
     }
     .stat-strip {
-      display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 14px;
     }
     .stat-card {
-      background: rgba(255,255,255,.82);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px 12px;
+      padding: 10px 10px 11px;
     }
-    .stat-card .k {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      margin-bottom: 4px;
-    }
-    .stat-card .v {
-      color: var(--ink);
-      font-size: 14px;
-      line-height: 1.35;
-    }
+    .stat-card .k,
+    .meta-block .k,
+    .call-event-block .k,
+    .attachment-kind,
     .section-label {
       color: var(--muted);
-      font-size: 12px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
       text-transform: uppercase;
-      letter-spacing: .08em;
-      margin: 18px 0 10px;
+    }
+    .stat-card .v {
+      margin-top: 4px;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.35;
+      font-weight: 600;
+    }
+    .section-label {
+      margin: 0;
     }
     .section-divider {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-top: 18px;
+      gap: 10px;
+      margin-top: 14px;
     }
     .section-divider::before,
     .section-divider::after {
       content: "";
       height: 1px;
-      background: var(--line);
       flex: 1;
-    }
-    .section-divider .section-label {
-      margin: 0;
-      white-space: nowrap;
-    }
-    .jump-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-    .subtle {
-      color: var(--muted);
-      font-size: 13px;
-    }
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    .participant-cloud {
-      margin-top: 10px;
+      background: linear-gradient(90deg, transparent, rgba(88,110,147,.18), transparent);
     }
     .expandable-shell {
       display: grid;
       gap: 8px;
     }
     .expandable-list {
+      position: relative;
       margin-top: 0;
       align-items: flex-start;
       min-width: 0;
-      position: relative;
     }
     .expandable-list.collapsed {
-      max-height: 76px;
+      max-height: 82px;
       overflow: hidden;
     }
     .expandable-list.expanded {
@@ -438,163 +929,253 @@ HTML_TEMPLATE = """<!doctype html>
       left: 0;
       right: 0;
       bottom: 0;
-      height: 18px;
-      background: linear-gradient(180deg, rgba(255,250,242,0), rgba(255,250,242,.96));
+      height: 22px;
+      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(246,249,255,.96));
       pointer-events: none;
     }
     .call-event-block .expandable-list.collapsed::after {
-      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.96));
-    }
-    .toggle-expandable-list {
-      justify-self: start;
+      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.98));
     }
     .participant-chip {
       font: inherit;
       line-height: 1.2;
     }
     .participant-chip-link {
-      background: #eaf1ff;
-      border-color: #355cde;
-      color: #1d3f9c;
+      color: var(--accent-strong);
+      background: rgba(232,241,255,.95);
+      border-color: rgba(37,99,235,.18);
       cursor: pointer;
     }
     .participant-chip-link:hover {
-      background: #dfe9ff;
+      background: rgba(224,236,255,.98);
     }
     .participant-chip-static {
-      background: #f1f3f5;
-      border-color: #d5dbe3;
-      color: #6a7582;
+      color: var(--muted-strong);
+      background: rgba(255,255,255,.86);
     }
-    .messages {
-      display: grid;
-      gap: 10px;
-      margin-top: 14px;
-    }
+    .messages,
     .search-results {
       display: grid;
-      gap: 14px;
-      margin-top: 14px;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .timeline-divider {
+      display: flex;
+      justify-content: center;
+      margin: 6px 0 2px;
+    }
+    .timeline-divider span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(88,110,147,.16);
+      background: rgba(255,255,255,.92);
+      color: var(--muted-strong);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      box-shadow: 0 8px 18px rgba(15,23,42,.05);
     }
     .search-group {
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      background: rgba(255,255,255,.78);
-      padding: 14px;
-      box-shadow: var(--shadow);
+      padding: 11px;
     }
     .search-group-header {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
       flex-wrap: wrap;
     }
     .search-group-meta {
+      margin-top: 4px;
       color: var(--muted);
-      font-size: 13px;
-      line-height: 1.4;
-      margin-top: 6px;
-    }
-    .search-group-divider {
-      height: 1px;
-      background: var(--line);
-      margin-top: 2px;
-    }
-    .msg.search-match {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(29,111,109,.12);
-      background: #f5fffd;
+      font-size: 12px;
+      line-height: 1.35;
     }
     .search-term {
       font-weight: 700;
-      background: rgba(255, 229, 120, .7);
-      border-radius: 3px;
-      padding: 0 1px;
+      background: rgba(255,214,102,.76);
+      border-radius: 5px;
+      padding: 0 2px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+    .msg-row {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr);
+      gap: 10px;
+      align-items: end;
+      min-width: 0;
+    }
+    .msg-row.self {
+      grid-template-columns: minmax(0, 1fr) 40px;
+    }
+    .msg-row.self .msg-avatar {
+      order: 2;
+    }
+    .msg-row.self .msg-stack {
+      order: 1;
+      align-items: end;
+    }
+    .msg-row.system {
+      grid-template-columns: 1fr;
+    }
+    .msg-row.system .msg-avatar {
+      display: none;
+    }
+    .msg-row.grouped-prev {
+      margin-top: -4px;
+    }
+    .msg-row.grouped-prev .msg-avatar {
+      opacity: 0;
+      transform: scale(.86);
+    }
+    .msg-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      color: #fff;
+      background:
+        linear-gradient(145deg, var(--msg-accent, var(--accent)), rgba(17,24,39,.82));
+      box-shadow: 0 6px 12px rgba(15,23,42,.10);
+      transition: opacity .18s var(--ease), transform .18s var(--ease);
+    }
+    .msg-stack {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
     }
     .msg {
-      padding: 12px 14px;
-      border-radius: 14px;
-      border: 1px solid var(--line);
-      border-left: 6px solid var(--msg-accent, var(--line));
-      background: rgba(255,255,255,.85);
-      scroll-margin-top: 24px;
+      position: relative;
+      min-width: 0;
+      padding: 12px 13px;
+      border-radius: 16px;
+      border: 1px solid rgba(88,110,147,.14);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.96), rgba(245,248,255,.86));
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,.48) inset;
+      scroll-margin-top: 116px;
+      transition:
+        border-color .18s var(--ease),
+        box-shadow .18s var(--ease),
+        background .18s var(--ease);
+    }
+    .msg::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      border-radius: 999px;
+      background: var(--msg-accent, var(--accent));
+      opacity: .8;
+    }
+    .msg-row.self .msg {
+      background:
+        linear-gradient(180deg, rgba(238,244,255,.98), rgba(228,238,255,.92));
+      border-color: rgba(37,99,235,.18);
+    }
+    .msg-row.system .msg {
+      background:
+        linear-gradient(180deg, rgba(255,248,240,.94), rgba(255,255,255,.94));
+      border-color: rgba(249,115,22,.20);
     }
     .msg.event {
-      background: rgba(255,248,244,.92);
+      border-color: rgba(249,115,22,.18);
     }
     .msg.focused {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(29,111,109,.14);
-      background: #f7fffd;
+      border-color: rgba(37,99,235,.30);
+      box-shadow:
+        0 10px 18px rgba(37,99,235,.08),
+        0 0 0 3px rgba(37,99,235,.10);
+      background:
+        linear-gradient(180deg, rgba(241,246,255,.98), rgba(255,255,255,.94));
+    }
+    .msg.search-match {
+      border-color: rgba(37,99,235,.26);
+      box-shadow:
+        0 8px 14px rgba(37,99,235,.06),
+        0 0 0 2px rgba(37,99,235,.09);
     }
     .msg .head {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
-      font-size: 13px;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
       color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .msg .head.primary {
       margin-bottom: 6px;
     }
+    .msg .head.secondary {
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+    }
+    .msg .head.compact {
+      margin-bottom: 8px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
     .msg .sender {
+      min-width: 0;
       color: var(--msg-accent, var(--accent));
-      font-weight: 600;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .msg-time {
+      white-space: nowrap;
+      color: var(--muted);
+    }
+    .msg-meta-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-width: 0;
+    }
+    .msg-mini-chip {
+      padding: 5px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(255,255,255,.92);
+      color: var(--muted-strong);
+    }
+    .msg-mini-chip.muted {
+      background: rgba(232,241,255,.90);
+      color: var(--accent-strong);
     }
     .msg .body {
       white-space: pre-wrap;
-      line-height: 1.4;
+      line-height: 1.5;
       word-break: break-word;
+      font-size: 13px;
+      color: var(--ink);
     }
     .msg .body.attachment-body {
       display: grid;
-      gap: 10px;
+      gap: 8px;
       white-space: normal;
     }
     .msg .body-text {
       white-space: pre-wrap;
-      line-height: 1.4;
+      line-height: 1.5;
       word-break: break-word;
-    }
-    .attachment-stack {
-      display: grid;
-      gap: 10px;
-    }
-    .attachment-card {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: rgba(255,255,255,.72);
-      padding: 10px 12px;
-      display: grid;
-      gap: 6px;
-    }
-    .attachment-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .attachment-kind {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-    }
-    .attachment-name {
-      font-weight: 600;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    .attachment-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .attachment-note {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
-      margin-top: 4px;
+      font-size: 13px;
     }
     details.msg-collapsible {
       padding: 0;
@@ -603,7 +1184,7 @@ HTML_TEMPLATE = """<!doctype html>
     details.msg-collapsible > summary {
       cursor: pointer;
       list-style-position: outside;
-      padding: 12px 14px;
+      padding: 12px 13px;
     }
     details.msg-collapsible > summary::-webkit-details-marker {
       margin-right: 8px;
@@ -612,88 +1193,120 @@ HTML_TEMPLATE = """<!doctype html>
       padding-bottom: 10px;
     }
     details.msg-collapsible .msg-body-wrap {
-      padding: 0 14px 12px;
-      border-top: 1px solid rgba(31,42,43,.08);
+      padding: 0 13px 13px;
+      border-top: 1px solid rgba(88,110,147,.12);
     }
     .msg-summary-note {
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1.35;
     }
-    .call-event {
-      border: 2px solid var(--call-outline, var(--line));
+    .attachment-stack {
+      display: grid;
+      gap: 8px;
+    }
+    .attachment-card {
+      display: grid;
+      gap: 7px;
+      padding: 10px;
       border-radius: 12px;
-      background: var(--call-bg, rgba(255,255,255,.72));
-      padding: 12px;
+      border: 1px solid rgba(88,110,147,.14);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.94), rgba(241,246,255,.84));
+    }
+    .attachment-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .attachment-name {
+      font-weight: 700;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .attachment-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .attachment-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+    .call-event {
       display: grid;
       gap: 10px;
-      box-shadow: 0 6px 16px rgba(31,42,43,.10);
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--call-outline, rgba(88,110,147,.18));
+      background: var(--call-bg, rgba(255,255,255,.94));
     }
     .call-event-header {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
       flex-wrap: wrap;
     }
     .call-event-title {
       color: var(--call-title, var(--accent));
-      font-weight: 600;
+      font-weight: 700;
     }
     .call-event-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+      gap: 7px;
     }
     .call-event-block {
-      background: var(--call-block-bg, rgba(255,255,255,.88));
-      border: 1px solid var(--call-outline, var(--line));
-      border-radius: 10px;
       padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--call-outline, rgba(88,110,147,.14));
+      background: var(--call-block-bg, rgba(255,255,255,.96));
     }
-    .call-event-block.wide {
+    .call-event-block.wide,
+    .meta-block.wide {
       grid-column: 1 / -1;
     }
-    .call-event-block .k {
-      color: var(--muted);
+    .meta-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .meta-block {
+      padding: 10px;
+      min-width: 0;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .meta-block .k {
+      margin-bottom: 3px;
+    }
+    .mono {
+      font-family: var(--mono);
       font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      margin-bottom: 4px;
-    }
-    .call-event-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .call-link {
-      border: 1px solid var(--accent);
-      border-radius: 999px;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font: inherit;
-      padding: 6px 10px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .call-link:hover {
-      background: #cfe7e4;
+      line-height: 1.45;
+      word-break: break-word;
     }
     .toast {
       position: fixed;
-      right: 20px;
-      bottom: 20px;
+      right: 24px;
+      bottom: 24px;
       z-index: 20;
-      background: rgba(31,42,43,.92);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      max-width: min(420px, calc(100vw - 48px));
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(15,23,42,.92);
       color: #fff;
-      padding: 10px 14px;
-      border-radius: 12px;
-      box-shadow: var(--shadow);
+      box-shadow: 0 18px 42px rgba(15,23,42,.28);
       opacity: 0;
       transform: translateY(10px);
-      transition: opacity .18s ease, transform .18s ease;
+      transition: opacity .18s var(--ease), transform .18s var(--ease);
       pointer-events: none;
     }
     .toast.show {
@@ -701,45 +1314,37 @@ HTML_TEMPLATE = """<!doctype html>
       transform: translateY(0);
     }
     details.raw-event {
-      border-top: 1px dashed var(--line);
-      padding-top: 8px;
+      border-top: 1px dashed rgba(88,110,147,.22);
+      padding-top: 10px;
     }
     details.raw-event summary {
       cursor: pointer;
       color: var(--muted);
     }
-    .meta-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 14px;
-      min-width: 0;
-    }
-    .meta-block {
-      background: rgba(255,255,255,.82);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 10px 12px;
-      min-width: 0;
-    }
-    .meta-block.wide {
-      grid-column: 1 / -1;
-    }
-    .meta-block .k {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      margin-bottom: 4px;
-    }
-    .mono {
-      font-family: var(--mono);
-      font-size: 12px;
-      word-break: break-word;
-    }
     .empty {
       color: var(--muted);
       padding: 24px 8px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    @keyframes shell-enter {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @media (max-width: 1320px) {
+      .app {
+        grid-template-columns: 340px minmax(0, 1fr);
+      }
+      .summary,
+      .stat-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
     @media (max-width: 980px) {
       body {
@@ -749,23 +1354,46 @@ HTML_TEMPLATE = """<!doctype html>
       .app {
         grid-template-columns: 1fr;
         height: auto;
-        min-height: 100vh;
-        overflow: visible;
       }
       .sidebar {
-        height: auto;
         min-height: auto;
-        border-right: 0;
-        border-bottom: 1px solid var(--line);
       }
       .sidebar-list-wrap {
         overflow: visible;
-        padding-top: 12px;
       }
-      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .meta-grid { grid-template-columns: 1fr; }
-      .call-event-grid { grid-template-columns: 1fr; }
-      .stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .summary,
+      .meta-grid,
+      .call-event-grid,
+      .stat-strip {
+        grid-template-columns: 1fr;
+      }
+      .main {
+        overflow: visible;
+      }
+      .main-scroll {
+        height: auto;
+        overflow: visible;
+      }
+      .overview-panel {
+        position: static;
+      }
+      .msg-row,
+      .msg-row.self {
+        grid-template-columns: 1fr;
+      }
+      .msg-avatar {
+        display: none;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+      }
     }
   </style>
 </head>
@@ -773,9 +1401,11 @@ HTML_TEMPLATE = """<!doctype html>
   <div class="app">
     <aside class="sidebar">
       <div class="sidebar-top">
-        <div class="title">
-          <h1>Michaelsoft Teams</h1>
-        </div>
+        <section class="brand-card">
+          <div class="brand-title">Michaelsoft Teams</div>
+          <div class="brand-kicker">Offline Teams Archive</div>
+          <div id="brandProfile" class="brand-profile">PROFILE: Recovered profile</div>
+        </section>
         <div class="view-tabs">
           <button id="viewMessages" class="tab active" type="button">Messages</button>
           <button id="viewCalls" class="tab" type="button">Calls</button>
@@ -804,17 +1434,17 @@ HTML_TEMPLATE = """<!doctype html>
           <input id="callSearch" type="search" placeholder="Search Calls and Details...">
           <select id="callGroupFilter">
             <option value="">All Call Types</option>
-            <option value="phone">Phone</option>
-            <option value="meeting">Meeting</option>
-            <option value="group">Group</option>
             <option value="call">Call</option>
+            <option value="group">Group</option>
+            <option value="meeting">Meeting</option>
+            <option value="phone">Phone</option>
           </select>
           <select id="callDirectionFilter">
             <option value="">All Directions</option>
             <option value="inbound">Inbound</option>
             <option value="outbound">Outbound</option>
-            <option value="declined">Declined</option>
             <option value="missed">Missed</option>
+            <option value="declined">Declined</option>
           </select>
           <div class="sidebar-range-controls">
             <label class="range-field">
@@ -829,22 +1459,39 @@ HTML_TEMPLATE = """<!doctype html>
           </div>
         </div>
         <div class="chip-row">
-          <div id="sidebarCount" class="chip"></div>
+          <div id="sidebarCount" class="chip chip-strong"></div>
+          <div class="chip hotkey-chip">/ Search</div>
+          <div class="chip hotkey-chip">[ ] Navigate</div>
         </div>
+        <div id="activeFilterBar" class="active-filter-bar"></div>
       </div>
       <div class="sidebar-divider"></div>
       <div class="sidebar-list-wrap">
         <div id="threadList" class="list"></div>
         <div id="callList" class="list hidden"></div>
       </div>
+      <button id="sidebarScrollTop" class="scroll-top-button" type="button" aria-label="Scroll sidebar to top" aria-hidden="true">&#8593;</button>
     </aside>
     <main class="main">
-      <div class="summary">
-        <div class="card"><div class="label">Threads</div><div class="value" id="sumThreads"></div></div>
-        <div class="card"><div class="label">Messages</div><div class="value" id="sumMessages"></div></div>
-        <div class="card"><div class="label">Calls</div><div class="value" id="sumCalls"></div></div>
+      <div class="main-scroll">
+        <div class="main-shell">
+          <section class="overview-panel panel">
+            <div class="overview-head">
+              <div class="overview-quote">&ldquo;The Party told you to reject the evidence of your eyes and ears. It was their final, most essential command.&rdquo; - George Orwell</div>
+              <div class="overview-side">
+                <div id="overviewMode" class="overview-mode">Messages Workspace</div>
+              </div>
+            </div>
+            <div class="summary">
+              <div class="card threads-card"><div class="label">Threads</div><div class="value" id="sumThreads"></div></div>
+              <div class="card messages-card"><div class="label">Messages</div><div class="value" id="sumMessages"></div></div>
+              <div class="card calls-card"><div class="label">Calls</div><div class="value" id="sumCalls"></div></div>
+            </div>
+          </section>
+          <section id="contentPanel" class="panel content-panel"></section>
+        </div>
       </div>
-      <section id="contentPanel" class="panel"></section>
+      <button id="mainScrollTop" class="scroll-top-button" type="button" aria-label="Scroll main content to top" aria-hidden="true">&#8593;</button>
     </main>
   </div>
   <div id="toast" class="toast"></div>
@@ -872,13 +1519,19 @@ HTML_TEMPLATE = """<!doctype html>
       focusTimestamp: null,
     };
 
+    const appShell = document.querySelector(".app");
     const contentPanel = document.getElementById("contentPanel");
     const mainPanel = document.querySelector(".main");
+    const mainScrollWrap = document.querySelector(".main-scroll");
+    const sidebarListWrap = document.querySelector(".sidebar-list-wrap");
     const threadList = document.getElementById("threadList");
     const callList = document.getElementById("callList");
     const messagesTools = document.getElementById("messagesTools");
     const callsTools = document.getElementById("callsTools");
+    const activeFilterBar = document.getElementById("activeFilterBar");
     const sidebarCount = document.getElementById("sidebarCount");
+    const brandProfile = document.getElementById("brandProfile");
+    const overviewMode = document.getElementById("overviewMode");
     const viewMessages = document.getElementById("viewMessages");
     const viewCalls = document.getElementById("viewCalls");
     const messageSearch = document.getElementById("messageSearch");
@@ -892,8 +1545,12 @@ HTML_TEMPLATE = """<!doctype html>
     const callDateFrom = document.getElementById("callDateFrom");
     const callDateTo = document.getElementById("callDateTo");
     const clearCallDateRange = document.getElementById("clearCallDateRange");
+    const sidebarScrollTopButton = document.getElementById("sidebarScrollTop");
+    const mainScrollTopButton = document.getElementById("mainScrollTop");
     const toast = document.getElementById("toast");
     const MESSAGE_ATTACHMENT_CACHE = new WeakMap();
+    const NUMBER_FORMATTER = new Intl.NumberFormat();
+    const UI_STATE_STORAGE_KEY = "michaelsoft_teams_ui_state_v2";
 
     const PERSON_NAME_BY_GUID = new Map(
       Object.entries(DATA.guid_directory || {})
@@ -957,9 +1614,9 @@ HTML_TEMPLATE = """<!doctype html>
       if (namePair) addToMapList(CALLS_BY_NAME_PAIR, namePair, call);
     }
 
-    document.getElementById("sumThreads").textContent = DATA.summary.threads_total;
-    document.getElementById("sumMessages").textContent = DATA.summary.messages_total;
-    document.getElementById("sumCalls").textContent = DATA.summary.calls_total;
+    document.getElementById("sumThreads").textContent = NUMBER_FORMATTER.format(DATA.summary.threads_total || 0);
+    document.getElementById("sumMessages").textContent = NUMBER_FORMATTER.format(DATA.summary.messages_total || 0);
+    document.getElementById("sumCalls").textContent = NUMBER_FORMATTER.format(DATA.summary.calls_total || 0);
 
     function fmt(value) {
       if (!value) return "[no_time]";
@@ -1113,6 +1770,7 @@ HTML_TEMPLATE = """<!doctype html>
 
     const CURRENT_USER_ID = normalizeGuid(DATA.profile && DATA.profile.oid);
     const CURRENT_USER_NAME = normalizeName(DATA.profile && DATA.profile.display_name);
+    const PROFILE_DISPLAY_NAME = stripFcs((DATA.profile && DATA.profile.display_name) || "") || "Recovered profile";
     const MESSAGE_COLOR_SELF = "#355CDE";
     const MESSAGE_COLOR_PALETTE = [
       "#0F766E",
@@ -1605,9 +2263,9 @@ HTML_TEMPLATE = """<!doctype html>
 
     function scrollMainToTop() {
       window.requestAnimationFrame(() => {
-        if (mainPanel) {
-          mainPanel.scrollTop = 0;
-          mainPanel.scrollTo({ top: 0, behavior: "auto" });
+        if (mainScrollWrap) {
+          mainScrollWrap.scrollTop = 0;
+          mainScrollWrap.scrollTo({ top: 0, behavior: "auto" });
         }
         if (contentPanel) {
           contentPanel.scrollTop = 0;
@@ -1615,7 +2273,26 @@ HTML_TEMPLATE = """<!doctype html>
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
         window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        scheduleSyncScrollTopButtons();
       });
+    }
+
+    function updateScrollTopButton(button, container) {
+      if (!button || !container) return;
+      const canScroll = container.scrollHeight > container.clientHeight + 24;
+      const shouldShow = canScroll && container.scrollTop > 120;
+      button.classList.toggle("visible", shouldShow);
+      button.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+    }
+
+    function syncScrollTopButtons() {
+      updateScrollTopButton(sidebarScrollTopButton, sidebarListWrap);
+      updateScrollTopButton(mainScrollTopButton, mainScrollWrap);
+    }
+
+    function scheduleSyncScrollTopButtons() {
+      window.cancelAnimationFrame(scheduleSyncScrollTopButtons.frame);
+      scheduleSyncScrollTopButtons.frame = window.requestAnimationFrame(syncScrollTopButtons);
     }
 
     async function copyText(value, label) {
@@ -1635,6 +2312,365 @@ HTML_TEMPLATE = """<!doctype html>
         document.body.removeChild(area);
       }
       showToast(label);
+    }
+
+    function formatDateOnly(value) {
+      if (!value) return "";
+      const date = new Date(String(value).length <= 10 ? `${value}T00:00:00` : value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+
+    function fmtTime(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    }
+
+    function formatDateRangeLabel(fromValue, toValue) {
+      const fromLabel = formatDateOnly(fromValue);
+      const toLabel = formatDateOnly(toValue);
+      if (fromLabel && toLabel) return `${fromLabel} to ${toLabel}`;
+      return fromLabel || toLabel || "Any time";
+    }
+
+    function senderInitials(value, limit = 2) {
+      const parts = String(value || "")
+        .replace(/[^A-Za-z0-9 ]+/g, " ")
+        .split(/\\s+/)
+        .filter(Boolean);
+      if (!parts.length) return "?";
+      return parts
+        .slice(0, limit)
+        .map(part => part[0].toUpperCase())
+        .join("");
+    }
+
+    function threadListAccent(thread) {
+      if (thread.category === "team_chat" || thread.category === "meeting") return "#F97316";
+      if (thread.category === "thread") return "#0F766E";
+      return "#2563EB";
+    }
+
+    function callListAccent(call) {
+      if (displayCallState(call) === "missed" || displayCallState(call) === "declined") return "#C2410C";
+      if (isMeetingCall(call)) return "#CA8A04";
+      if (displayCallDirection(call) === "incoming") return "#0F766E";
+      return "#2563EB";
+    }
+
+    function callPreviewSummary(call) {
+      const parts = dedupe([
+        displayCallStatus(call),
+        callDuration(call),
+        stripFcs(call.meeting_subject || ""),
+      ].filter(Boolean));
+      return parts.join(" | ");
+    }
+
+    function isSystemMessage(message) {
+      return Boolean(
+        message &&
+        (
+          message.quality === "event" ||
+          message.synthetic_call ||
+          message.message_type === "Event/Call" ||
+          isMembershipEvent(message)
+        )
+      );
+    }
+
+    function messageDayKey(message) {
+      const value = timeValue(message && message.timestamp);
+      if (!Number.isFinite(value)) return "";
+      const date = new Date(value);
+      return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+    }
+
+    function timelineDayLabel(message) {
+      if (!message || !message.timestamp) return "";
+      const date = new Date(message.timestamp);
+      if (Number.isNaN(date.getTime())) return String(message.timestamp || "");
+      return date.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+
+    function messagesShareVisualCluster(previousMessage, nextMessage) {
+      if (!previousMessage || !nextMessage) return false;
+      if (isSystemMessage(previousMessage) || isSystemMessage(nextMessage)) return false;
+      if (messageSenderKey(previousMessage) !== messageSenderKey(nextMessage)) return false;
+      if (messageDayKey(previousMessage) !== messageDayKey(nextMessage)) return false;
+      const timeGap = Math.abs(timeValue(previousMessage.timestamp) - timeValue(nextMessage.timestamp));
+      return timeGap <= 5 * 60 * 1000;
+    }
+
+    function renderTimeline(messages, thread, options = {}) {
+      const messageOptions = typeof options.messageOptions === "function"
+        ? options.messageOptions
+        : (() => ({}));
+      const includeDayDividers = options.includeDayDividers !== false;
+      const fragments = [];
+
+      for (let index = 0; index < messages.length; index += 1) {
+        const message = messages[index];
+        const previousMessage = index > 0 ? messages[index - 1] : null;
+        const nextMessage = index < messages.length - 1 ? messages[index + 1] : null;
+
+        if (includeDayDividers && messageDayKey(message) !== messageDayKey(previousMessage)) {
+          fragments.push(`<div class="timeline-divider"><span>${escapeHtml(timelineDayLabel(message))}</span></div>`);
+        }
+
+        fragments.push(renderMessageRow(message, thread, {
+          ...messageOptions(message, index, messages),
+          groupedWithPrevious: messagesShareVisualCluster(previousMessage, message),
+          groupedWithNext: messagesShareVisualCluster(message, nextMessage),
+        }));
+      }
+
+      return fragments.join("");
+    }
+
+    function syncInputsFromState() {
+      messageSearch.value = state.messageSearch || "";
+      categoryFilter.value = state.category || "";
+      messageDateFrom.value = state.messageDateFrom || "";
+      messageDateTo.value = state.messageDateTo || "";
+      callSearch.value = state.callSearch || "";
+      callGroupFilter.value = state.callGroup || "";
+      callDirectionFilter.value = state.callDirection || "";
+      callDateFrom.value = state.callDateFrom || "";
+      callDateTo.value = state.callDateTo || "";
+    }
+
+    function renderChrome() {
+      const modeLabel = state.view === "calls"
+        ? "Calls Workspace"
+        : (state.messageSearch ? "Search Workspace" : "Messages Workspace");
+      if (brandProfile) brandProfile.textContent = `PROFILE: ${PROFILE_DISPLAY_NAME}`;
+      if (overviewMode) overviewMode.textContent = modeLabel;
+      if (appShell) appShell.dataset.view = state.view;
+      if (contentPanel) contentPanel.dataset.view = state.view;
+    }
+
+    function activeFilterEntries() {
+      const entries = [];
+      if (state.view === "messages") {
+        if (state.messageSearch) {
+          entries.push({ key: "message-search", label: `Search: ${truncate(state.messageSearch, 28)}` });
+        }
+        if (state.category) {
+          entries.push({ key: "message-category", label: `Type: ${prettyCategory(state.category)}` });
+        }
+        if (state.messageDateFrom || state.messageDateTo) {
+          entries.push({ key: "message-date", label: `Global: ${formatDateRangeLabel(state.messageDateFrom, state.messageDateTo)}` });
+        }
+        if (state.threadDateFrom || state.threadDateTo) {
+          entries.push({ key: "thread-date", label: `Timeline: ${formatDateRangeLabel(state.threadDateFrom, state.threadDateTo)}` });
+        }
+        if (state.messageViewFilter && state.messageViewFilter !== "all") {
+          const label = state.messageViewFilter === "messages" ? "Messages only" : "Events only";
+          entries.push({ key: "message-view-filter", label: `View: ${label}` });
+        }
+      } else {
+        if (state.callSearch) {
+          entries.push({ key: "call-search", label: `Search: ${truncate(state.callSearch, 28)}` });
+        }
+        if (state.callGroup) {
+          const callGroupLabels = {
+            phone: "Phone",
+            meeting: "Meeting",
+            group: "Group",
+            call: "Call",
+          };
+          entries.push({ key: "call-group", label: `Type: ${callGroupLabels[state.callGroup] || state.callGroup}` });
+        }
+        if (state.callDirection) {
+          const directionLabels = {
+            inbound: "Inbound",
+            outbound: "Outbound",
+            declined: "Declined",
+            missed: "Missed",
+          };
+          entries.push({ key: "call-direction", label: `Direction: ${directionLabels[state.callDirection] || state.callDirection}` });
+        }
+        if (state.callDateFrom || state.callDateTo) {
+          entries.push({ key: "call-date", label: `Window: ${formatDateRangeLabel(state.callDateFrom, state.callDateTo)}` });
+        }
+      }
+      return entries;
+    }
+
+    function renderActiveFilters() {
+      if (!activeFilterBar) return;
+      const entries = activeFilterEntries();
+      activeFilterBar.innerHTML = entries.map(entry => `
+        <button type="button" class="filter-pill" data-clear-filter="${escapeHtml(entry.key)}">
+          <span>${escapeHtml(entry.label)}</span>
+          <span class="dismiss">x</span>
+        </button>
+      `).join("") || `<div class="subtle">No active filters. Press / to search.</div>`;
+    }
+
+    function persistState() {
+      try {
+        window.localStorage.setItem(UI_STATE_STORAGE_KEY, JSON.stringify({
+          view: state.view,
+          messageSearch: state.messageSearch,
+          messageDateFrom: state.messageDateFrom,
+          messageDateTo: state.messageDateTo,
+          callSearch: state.callSearch,
+          category: state.category,
+          callGroup: state.callGroup,
+          callDirection: state.callDirection,
+          callDateFrom: state.callDateFrom,
+          callDateTo: state.callDateTo,
+          messageViewFilter: state.messageViewFilter,
+          threadDateFrom: state.threadDateFrom,
+          threadDateTo: state.threadDateTo,
+          expandHiddenData: state.expandHiddenData,
+          threadId: state.threadId,
+          callKey: state.callKey,
+        }));
+      } catch (error) {
+        // Ignore storage failures in local-file contexts or locked-down browsers.
+      }
+    }
+
+    function schedulePersistState() {
+      window.clearTimeout(schedulePersistState.timer);
+      schedulePersistState.timer = window.setTimeout(persistState, 60);
+    }
+
+    function restoreState() {
+      try {
+        const raw = window.localStorage.getItem(UI_STATE_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return;
+        const stringKeys = [
+          "view",
+          "messageSearch",
+          "messageDateFrom",
+          "messageDateTo",
+          "callSearch",
+          "category",
+          "callGroup",
+          "callDirection",
+          "callDateFrom",
+          "callDateTo",
+          "messageViewFilter",
+          "threadDateFrom",
+          "threadDateTo",
+          "threadId",
+          "callKey",
+        ];
+        for (const key of stringKeys) {
+          if (typeof parsed[key] === "string") state[key] = parsed[key];
+        }
+        if (typeof parsed.expandHiddenData === "boolean") {
+          state.expandHiddenData = parsed.expandHiddenData;
+        }
+        if (!["messages", "calls"].includes(state.view)) state.view = "messages";
+        if (!["all", "messages", "events"].includes(state.messageViewFilter)) {
+          state.messageViewFilter = "all";
+        }
+      } catch (error) {
+        // Ignore malformed or unavailable local storage.
+      }
+    }
+
+    function focusActiveSearchField() {
+      const element = state.view === "calls" ? callSearch : messageSearch;
+      if (!element) return;
+      element.focus();
+      element.select();
+    }
+
+    function isTypingTarget(target) {
+      return Boolean(
+        target &&
+        (
+          target.closest("input, textarea, select") ||
+          target.isContentEditable
+        )
+      );
+    }
+
+    function clearCurrentSearch() {
+      if (state.view === "calls" && state.callSearch) {
+        state.callSearch = "";
+        renderView();
+        return true;
+      }
+      if (state.view === "messages" && state.messageSearch) {
+        state.messageSearch = "";
+        renderView();
+        return true;
+      }
+      return false;
+    }
+
+    function revealActiveListRow(scope) {
+      if (!scope) return;
+      const activeRow = scope.querySelector(".list-row.active");
+      if (!activeRow) return;
+      window.requestAnimationFrame(() => {
+        activeRow.scrollIntoView({ block: "nearest", inline: "nearest" });
+      });
+    }
+
+    function moveSidebarSelection(direction) {
+      if (state.view === "messages") {
+        if (state.messageSearch) return;
+        const rows = filteredThreads();
+        if (!rows.length) return;
+        let index = rows.findIndex(thread => thread.id === state.threadId);
+        if (index < 0) index = 0;
+        index = Math.max(0, Math.min(rows.length - 1, index + direction));
+        state.threadId = rows[index].id;
+        state.focusCallKey = null;
+        state.focusTimestamp = null;
+        renderView();
+        revealActiveListRow(threadList);
+        scrollMainToTop();
+        return;
+      }
+
+      const rows = filteredCalls();
+      if (!rows.length) return;
+      let index = rows.findIndex(call => callKey(call) === state.callKey);
+      if (index < 0) index = 0;
+      index = Math.max(0, Math.min(rows.length - 1, index + direction));
+      state.callKey = callKey(rows[index]);
+      renderView();
+      revealActiveListRow(callList);
+    }
+
+    function scheduleMessageSearchRender() {
+      window.clearTimeout(scheduleMessageSearchRender.timer);
+      scheduleMessageSearchRender.timer = window.setTimeout(() => {
+        renderView();
+        scrollMainToTop();
+      }, 90);
+    }
+
+    function scheduleCallSearchRender() {
+      window.clearTimeout(scheduleCallSearchRender.timer);
+      scheduleCallSearchRender.timer = window.setTimeout(() => {
+        renderView();
+      }, 90);
     }
 
     function prettyCategory(category) {
@@ -3120,6 +4156,7 @@ HTML_TEMPLATE = """<!doctype html>
     function filteredCalls() {
       return DATA.calls
         .filter(call => {
+          const query = String(state.callSearch || "").trim().toLowerCase();
           if (state.callGroup && callGroupKey(call) !== state.callGroup) {
             return false;
           }
@@ -3133,7 +4170,7 @@ HTML_TEMPLATE = """<!doctype html>
           } else if (state.callDirection === "missed") {
             if (displayCallState(call) !== "missed") return false;
           }
-          if (state.callSearch && !callSearchText(call).includes(state.callSearch)) {
+          if (query && !callSearchText(call).includes(query)) {
             return false;
           }
           if (!callPassesDateRange(call)) {
@@ -3219,6 +4256,12 @@ HTML_TEMPLATE = """<!doctype html>
       const useHighlight = Boolean(options.highlight);
       const isFocused = Boolean(options.focused);
       const isSearchMatch = Boolean(options.searchMatch);
+      const groupedWithPrevious = Boolean(options.groupedWithPrevious);
+      const groupedWithNext = Boolean(options.groupedWithNext);
+      const systemMessage = isSystemMessage(message);
+      const selfMessage = !systemMessage && isOwnMessage(message);
+      const accent = messageAccent(message);
+      const senderLabel = messageDisplaySender(message);
       const classes = [
         "msg",
         message.quality === "event" ? "event" : "",
@@ -3226,49 +4269,75 @@ HTML_TEMPLATE = """<!doctype html>
         isSearchMatch ? "search-match" : "",
       ].filter(Boolean).join(" ");
       const senderHtml = useHighlight
-        ? highlightSearchHtml(messageDisplaySender(message))
-        : escapeHtml(messageDisplaySender(message));
+        ? highlightSearchHtml(senderLabel)
+        : escapeHtml(senderLabel);
       const typeHtml = useHighlight
         ? highlightSearchHtml(displayMessageType(message))
         : escapeHtml(displayMessageType(message));
       const bodyHtml = renderMessageBody(message, thread, useHighlight);
       const hiddenMeta = messageHiddenMeta(message);
       const openHidden = Boolean((hiddenMeta && hiddenMeta.count > 0) && (state.expandHiddenData || isFocused));
-      const shellAttrs = `class="${escapeHtml(classes)}${hiddenMeta && hiddenMeta.count > 0 ? " msg-collapsible" : ""}" data-call-key="${escapeHtml(messageLinkedCallKey(message))}" data-timestamp="${escapeHtml(String(timeValue(message.timestamp)))}" style="--msg-accent:${escapeHtml(messageAccent(message))}"`;
+      const shellAttrs = `class="${escapeHtml(classes)}${hiddenMeta && hiddenMeta.count > 0 ? " msg-collapsible" : ""}" data-call-key="${escapeHtml(messageLinkedCallKey(message))}" data-timestamp="${escapeHtml(String(timeValue(message.timestamp)))}"`;
+      const rowClasses = [
+        "msg-row",
+        selfMessage ? "self" : "",
+        systemMessage ? "system" : "",
+        groupedWithPrevious ? "grouped-prev" : "",
+        groupedWithNext ? "grouped-next" : "",
+      ].filter(Boolean).join(" ");
+      const badgeHtml = `
+        <div class="msg-meta-pills">
+          <span class="msg-mini-chip">${typeHtml}</span>
+          <span class="msg-mini-chip muted">${escapeHtml(displayMessageQuality(message))}</span>
+        </div>
+      `;
+      const headerHtml = groupedWithPrevious && !systemMessage
+        ? `
+          <div class="head compact">
+            <span class="msg-time">${escapeHtml(fmtTime(message.timestamp) || fmt(message.timestamp))}</span>
+            ${badgeHtml}
+          </div>
+        `
+        : `
+          <div class="head primary">
+            <span class="sender">${senderHtml}</span>
+            <span class="msg-time">${escapeHtml(fmt(message.timestamp))}</span>
+          </div>
+          <div class="head secondary">
+            ${badgeHtml}
+          </div>
+        `;
+      const avatarLabel = senderInitials(systemMessage ? displayMessageType(message) : senderLabel, systemMessage ? 1 : 2);
 
       if (hiddenMeta && hiddenMeta.count > 0) {
         return `
-          <details ${shellAttrs} ${openHidden ? "open" : ""}>
-            <summary>
-              <div class="head">
-                <span class="sender">${senderHtml}</span>
-                <span>${escapeHtml(fmt(message.timestamp))}</span>
-              </div>
-              <div class="head">
-                <span>${typeHtml}</span>
-                <span>${escapeHtml(displayMessageQuality(message))}</span>
-              </div>
-              <div class="msg-summary-note">${escapeHtml(hiddenMeta.label)}</div>
-            </summary>
-            <div class="msg-body-wrap">
-              ${bodyHtml}
+          <article class="${escapeHtml(rowClasses)}" style="--msg-accent:${escapeHtml(accent)}">
+            <div class="msg-avatar" aria-hidden="true">${escapeHtml(avatarLabel)}</div>
+            <div class="msg-stack">
+              <details ${shellAttrs} ${openHidden ? "open" : ""}>
+                <summary>
+                  ${headerHtml}
+                  <div class="msg-summary-note">${escapeHtml(hiddenMeta.label)}</div>
+                </summary>
+                <div class="msg-body-wrap">
+                  ${bodyHtml}
+                </div>
+              </details>
             </div>
-          </details>
+          </article>
         `;
       }
 
       return `
-        <div ${shellAttrs}>
-          <div class="head">
-            <span class="sender">${senderHtml}</span>
-            <span>${escapeHtml(fmt(message.timestamp))}</span>
+        <article class="${escapeHtml(rowClasses)}" style="--msg-accent:${escapeHtml(accent)}">
+          <div class="msg-avatar" aria-hidden="true">${escapeHtml(avatarLabel)}</div>
+          <div class="msg-stack">
+            <div ${shellAttrs}>
+              ${headerHtml}
+              ${bodyHtml}
+            </div>
           </div>
-        <div class="head">
-          <span>${typeHtml}</span>
-          <span>${escapeHtml(displayMessageQuality(message))}</span>
-        </div>
-        ${bodyHtml}
-      </div>
+        </article>
       `;
     }
 
@@ -3330,13 +4399,17 @@ HTML_TEMPLATE = """<!doctype html>
         state.threadId = rows[0] ? rows[0].id : null;
       }
       threadList.innerHTML = rows.map(thread => `
-        <div class="list-row ${thread.id === state.threadId ? "active" : ""}" data-id="${escapeHtml(thread.id)}">
-          <div><strong>${escapeHtml(stripFcs(thread.label || thread.id))}</strong></div>
-          <div class="meta">
-            <span>${escapeHtml(prettyCategory(thread.category))}</span>
-            <span>${escapeHtml(fmt(threadLastTimestampRaw(thread)))}</span>
+        <div class="list-row ${thread.id === state.threadId ? "active" : ""}" data-id="${escapeHtml(thread.id)}" style="--row-accent:${escapeHtml(threadListAccent(thread))}">
+          <div class="list-row-top">
+            <span class="list-pill">${escapeHtml(prettyCategory(thread.category))}</span>
+            <span class="list-time">${escapeHtml(fmt(threadLastTimestampRaw(thread)))}</span>
           </div>
-          <div class="preview">${escapeHtml(latestThreadPreview(thread))}</div>
+          <strong class="list-title">${escapeHtml(stripFcs(thread.label || thread.id))}</strong>
+          <div class="preview">${escapeHtml(latestThreadPreview(thread) || "No preview available.")}</div>
+          <div class="list-stats">
+            <span>${escapeHtml(NUMBER_FORMATTER.format(thread.message_count || (thread.messages || []).length))} items</span>
+            <span>${escapeHtml(NUMBER_FORMATTER.format((thread.participants || []).length))} people</span>
+          </div>
         </div>
       `).join("") || `<div class="empty">No conversations match the current filters.</div>`;
     }
@@ -3348,25 +4421,32 @@ HTML_TEMPLATE = """<!doctype html>
         state.callKey = rows[0] ? callKey(rows[0]) : null;
       }
       callList.innerHTML = rows.map(call => `
-        <div class="list-row ${callKey(call) === state.callKey ? "active" : ""}" data-key="${escapeHtml(callKey(call))}">
-          <div><strong>${escapeHtml(stripFcs(callLabel(call)))}</strong></div>
-          <div class="meta">
-            <span>${escapeHtml(displayCallStatus(call))}</span>
-            <span>${escapeHtml(fmt(callPrimaryTimestamp(call)))}</span>
+        <div class="list-row ${callKey(call) === state.callKey ? "active" : ""}" data-key="${escapeHtml(callKey(call))}" style="--row-accent:${escapeHtml(callListAccent(call))}">
+          <div class="list-row-top">
+            <span class="list-pill">${escapeHtml(displayCallGroupLabel(call))}</span>
+            <span class="list-time">${escapeHtml(fmt(callPrimaryTimestamp(call)))}</span>
+          </div>
+          <strong class="list-title">${escapeHtml(stripFcs(callLabel(call)))}</strong>
+          <div class="list-stats">
+            <span>${escapeHtml(displayCallStatus(call) || "Unclassified")}</span>
+            <span>${escapeHtml(callDuration(call) || "Duration unavailable")}</span>
           </div>
         </div>
       `).join("") || `<div class="empty">No calls match the current filters.</div>`;
     }
 
     function renderSearchResultsPanel() {
-        const groups = searchResultGroups();
-        const totalMatches = groups.reduce((sum, group) => sum + group.hitCount, 0);
-        contentPanel.innerHTML = `
-        <div class="title">
-          <h2>Search Results</h2>
-          <div class="chip">${escapeHtml(String(totalMatches))} matches</div>
-        </div>
-        <div class="subtle">Showing grouped timeline matches for <strong>${escapeHtml(state.messageSearch)}</strong> with +/- 1 surrounding timeline item.</div>
+      const groups = searchResultGroups();
+      const totalMatches = groups.reduce((sum, group) => sum + group.hitCount, 0);
+      contentPanel.innerHTML = `
+        <section class="detail-hero">
+          <div class="kicker">Grouped Search Results</div>
+          <div class="title">
+            <h2>Search Results</h2>
+            <div class="chip chip-strong">${escapeHtml(NUMBER_FORMATTER.format(totalMatches))} matches</div>
+          </div>
+          <div class="detail-subtle">Showing grouped timeline matches for <strong>${escapeHtml(state.messageSearch)}</strong> with plus or minus one surrounding timeline item.</div>
+        </section>
         <div class="search-results">
           ${groups.map((group, index) => `
             <div class="search-group">
@@ -3378,10 +4458,12 @@ HTML_TEMPLATE = """<!doctype html>
                 <button type="button" class="call-link open-search-thread" data-thread-id="${escapeHtml(group.thread.id)}" data-focus-time="${escapeHtml(group.focusTimestamp || "")}" data-focus-call-key="${escapeHtml(group.focusCallKey || "")}" data-view-filter="${escapeHtml(group.viewFilter || "all")}">Open In Chats</button>
               </div>
               <div class="messages">
-                ${group.messages.map(message => renderMessageRow(message, group.thread, {
-                  highlight: true,
-                  searchMatch: textMatchesSearch(searchMessageText(group.thread, message)),
-                })).join("")}
+                ${renderTimeline(group.messages, group.thread, {
+                  messageOptions: message => ({
+                    highlight: true,
+                    searchMatch: textMatchesSearch(searchMessageText(group.thread, message)),
+                  }),
+                })}
               </div>
             </div>
             ${index < groups.length - 1 ? `<div class="search-group-divider"></div>` : ``}
@@ -3437,21 +4519,25 @@ HTML_TEMPLATE = """<!doctype html>
       const meetingSubject = stripFcs(meeting.subject || meetingCall.meeting_subject || meta.topic || thread.label || "");
       const meetingStart = meeting.startTime || meetingCall.meeting_start_time || "";
       const meetingEnd = meeting.endTime || meetingCall.meeting_end_time || "";
+      const meetingWindowLabel = meetingStart ? `${fmt(meetingStart)} to ${fmt(meetingEnd)}` : "";
       const showCompactChatMeta = ["chat_space", "thread"].includes(thread.category);
       contentPanel.innerHTML = `
-        <div class="title">
-          <h2>${escapeHtml(stripFcs(thread.label || thread.id))}</h2>
-          <div class="chip">${escapeHtml(prettyCategory(thread.category))} | ${allMessages.length} timeline items</div>
-        </div>
-        <div class="participant-cloud">
-          ${renderExpandableChipGroup(threadParticipantEntries(thread), {
-            emptyLabel: "No participants were resolved.",
-            enableChatLinks: ["team_chat", "thread"].includes(thread.category),
-          })}
-        </div>
-        <div class="section-divider">
-          <div class="section-label">Details</div>
-        </div>
+        <section class="detail-hero">
+          <div class="kicker">${escapeHtml(prettyCategory(thread.category))}</div>
+          <div class="title">
+            <h2>${escapeHtml(stripFcs(thread.label || thread.id))}</h2>
+            <div class="chip chip-strong">${escapeHtml(NUMBER_FORMATTER.format(allMessages.length))} timeline items</div>
+          </div>
+          <div class="detail-subtle">${escapeHtml(showCompactChatMeta
+            ? `${NUMBER_FORMATTER.format((thread.participants || []).length)} participants | ${NUMBER_FORMATTER.format(linkedCallCount)} linked calls`
+            : (meetingSubject || "Meeting metadata available below"))}</div>
+          <div class="participant-cloud">
+            ${renderExpandableChipGroup(threadParticipantEntries(thread), {
+              emptyLabel: "No participants were resolved.",
+              enableChatLinks: ["team_chat", "thread"].includes(thread.category),
+            })}
+          </div>
+        </section>
         <div class="detail-toolbar">
           <div class="toolbar-row">
             <div class="segmented">
@@ -3481,26 +4567,28 @@ HTML_TEMPLATE = """<!doctype html>
           <div class="toolbar-divider"></div>
         </div>
         <div class="stat-strip">
-          <div class="stat-card"><div class="k">Visible</div><div class="v">${escapeHtml(String(messages.length))}</div></div>
-          <div class="stat-card"><div class="k">Curated</div><div class="v">${escapeHtml(String(curatedCount))}</div></div>
-          <div class="stat-card"><div class="k">Events</div><div class="v">${escapeHtml(String(eventCount))}</div></div>
+          <div class="stat-card"><div class="k">Visible</div><div class="v">${escapeHtml(NUMBER_FORMATTER.format(messages.length))}</div></div>
+          <div class="stat-card"><div class="k">Curated</div><div class="v">${escapeHtml(NUMBER_FORMATTER.format(curatedCount))}</div></div>
+          <div class="stat-card"><div class="k">Events</div><div class="v">${escapeHtml(NUMBER_FORMATTER.format(eventCount))}</div></div>
           <div class="stat-card"><div class="k">Last Activity</div><div class="v">${escapeHtml(fmt(lastMessage ? lastMessage.timestamp : null))}</div></div>
         </div>
         <div class="meta-grid">
           <div class="meta-block"><div class="k">Thread Id</div><div class="mono">${escapeHtml(thread.id)}</div></div>
-          <div class="meta-block"><div class="k">Participants</div><div>${(thread.participants || []).length}</div></div>
-          <div class="meta-block"><div class="k">Merged Calls</div><div>${escapeHtml(String(linkedCallCount))}</div></div>
+          <div class="meta-block"><div class="k">Participants</div><div>${escapeHtml(NUMBER_FORMATTER.format((thread.participants || []).length))}</div></div>
+          <div class="meta-block"><div class="k">Merged Calls</div><div>${escapeHtml(NUMBER_FORMATTER.format(linkedCallCount))}</div></div>
           ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Subject</div><div>${escapeHtml(meetingSubject)}</div></div>`}
-          ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Window</div><div>${escapeHtml(meetingStart ? `${fmt(meetingStart)} to ${fmt(meetingEnd)}` : "")}</div></div>`}
+          ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Window</div><div>${escapeHtml(meetingWindowLabel)}</div></div>`}
           <div class="meta-block"><div class="k">First Activity</div><div>${escapeHtml(fmt(firstMessage ? firstMessage.timestamp : null))}</div></div>
         </div>
         <div class="section-divider">
           <div class="section-label">Timeline</div>
         </div>
         <div class="messages">
-          ${messages.map(message => renderMessageRow(message, thread, {
-            focused: state.focusCallKey && messageLinkedCallKey(message) === state.focusCallKey,
-          })).join("") || `<div class="empty">${(hasThreadDateRange() || hasSidebarMessageDateRange()) ? "No timeline items match the current date range and filters." : "No messages in this conversation."}</div>`}
+          ${renderTimeline(messages, thread, {
+            messageOptions: message => ({
+              focused: state.focusCallKey && messageLinkedCallKey(message) === state.focusCallKey,
+            }),
+          }) || `<div class="empty">${(hasThreadDateRange() || hasSidebarMessageDateRange()) ? "No timeline items match the current date range and filters." : "No messages in this conversation."}</div>`}
         </div>
       `;
       initExpandableLists(contentPanel);
@@ -3509,29 +4597,28 @@ HTML_TEMPLATE = """<!doctype html>
       [...contentPanel.querySelectorAll(".message-filter")].forEach(element => {
         element.addEventListener("click", () => {
           state.messageViewFilter = element.dataset.filter;
-          renderThreadPanel();
+          renderView();
         });
       });
       const threadDateFrom = contentPanel.querySelector(".thread-date-from");
       if (threadDateFrom) {
         threadDateFrom.addEventListener("change", event => {
           state.threadDateFrom = event.target.value || "";
-          renderThreadPanel();
+          renderView();
         });
       }
       const threadDateTo = contentPanel.querySelector(".thread-date-to");
       if (threadDateTo) {
         threadDateTo.addEventListener("change", event => {
           state.threadDateTo = event.target.value || "";
-          renderThreadPanel();
+          renderView();
         });
       }
       const clearDateRange = contentPanel.querySelector(".clear-date-range");
       if (clearDateRange) {
         clearDateRange.addEventListener("click", () => {
           clearAllMessageDateRanges();
-          renderMessageList();
-          renderThreadPanel();
+          renderView();
         });
       }
       const copyThreadId = contentPanel.querySelector(".copy-thread-id");
@@ -3542,7 +4629,7 @@ HTML_TEMPLATE = """<!doctype html>
       if (toggleRaw) {
         toggleRaw.addEventListener("click", () => {
           state.expandHiddenData = !state.expandHiddenData;
-          renderThreadPanel();
+          renderView();
         });
       }
       const jumpNewest = contentPanel.querySelector(".jump-newest");
@@ -3611,6 +4698,7 @@ HTML_TEMPLATE = """<!doctype html>
       const callGroupLabel = displayCallGroupLabel(call);
       const callTypeLabel = displayCallTypeLabel(call);
       const callQualityLabel = displayCallQualityLabel(call);
+      const callDurationLabel = callDuration(call);
       const showRawType = includeRawCallTypeChip(call);
       const topDetailChips = dedupe([
         callGroupLabel,
@@ -3618,17 +4706,18 @@ HTML_TEMPLATE = """<!doctype html>
         callQualityLabel,
       ].filter(Boolean));
       contentPanel.innerHTML = `
-        <div class="title">
-          <h2>${escapeHtml(stripFcs(callLabel(call)))}</h2>
-          <div class="chip">${escapeHtml(displayCallStatus(call))}</div>
-        </div>
-        <div class="chips">
-          ${topDetailChips.map(label => `<div class="chip">${escapeHtml(label)}</div>`).join("")}
-        </div>
-        <div class="detail-toolbar">
-          <div class="segmented">
-            <div class="chip">${escapeHtml(callDuration(call) || "Duration unavailable")}</div>
+        <section class="detail-hero">
+          <div class="kicker">${escapeHtml(callGroupLabel)}</div>
+          <div class="title">
+            <h2>${escapeHtml(stripFcs(callLabel(call)))}</h2>
+            <div class="chip chip-strong">${escapeHtml(displayCallStatus(call))}</div>
           </div>
+          <div class="chips">
+            ${callDurationLabel ? `<div class="chip">${escapeHtml(callDurationLabel)}</div>` : ``}
+            ${topDetailChips.map(label => `<div class="chip">${escapeHtml(label)}</div>`).join("")}
+          </div>
+        </section>
+        <div class="detail-toolbar">
           <div class="call-event-actions">
             <a class="call-link" href="teams_ccl_csv_v1/call_history.csv" target="_blank" rel="noopener">Open Call CSV</a>
             <button type="button" class="call-link copy-call-id">Copy Call Id</button>
@@ -3638,7 +4727,7 @@ HTML_TEMPLATE = """<!doctype html>
           <div class="stat-card"><div class="k">Start</div><div class="v">${escapeHtml(fmt(call.start_time))}</div></div>
           <div class="stat-card"><div class="k">End</div><div class="v">${escapeHtml(fmt(call.end_time))}</div></div>
           <div class="stat-card"><div class="k">Duration</div><div class="v">${escapeHtml(callDuration(call) || "Unavailable")}</div></div>
-          <div class="stat-card"><div class="k">Linked Conversations</div><div class="v">${escapeHtml(String(relatedThreads.length))}</div></div>
+          <div class="stat-card"><div class="k">Linked Conversations</div><div class="v">${escapeHtml(NUMBER_FORMATTER.format(relatedThreads.length))}</div></div>
         </div>
         <div class="meta-grid">
           <div class="meta-block"><div class="k">Start Time</div><div>${escapeHtml(fmt(call.start_time))}</div></div>
@@ -3656,7 +4745,9 @@ HTML_TEMPLATE = """<!doctype html>
           ${call.meeting_subject ? `<div class="meta-block"><div class="k">Meeting Subject</div><div>${escapeHtml(stripFcs(call.meeting_subject || ""))}</div></div>` : ``}
           ${callMeetingWindow ? `<div class="meta-block"><div class="k">Meeting Window</div><div>${escapeHtml(callMeetingWindow)}</div></div>` : ``}
         </div>
-        <div class="section-label">Open Conversation At Call Time</div>
+        <div class="section-divider">
+          <div class="section-label">Open Conversation At Call Time</div>
+        </div>
         ${jumpTargets.length
           ? `<div class="jump-list">
               ${jumpTargets.map(target => `<button type="button" class="call-link open-thread-record" data-thread-id="${escapeHtml(target.thread.id)}" data-focus-time="${escapeHtml(target.focusTimestamp || "")}" data-focus-call-key="${escapeHtml(target.focusCallKey || "")}" data-view-filter="${escapeHtml(target.viewFilter || "all")}">${escapeHtml(callJumpLabel(target))}</button>`).join("")}
@@ -3696,6 +4787,8 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function renderView() {
+      window.clearTimeout(scheduleMessageSearchRender.timer);
+      window.clearTimeout(scheduleCallSearchRender.timer);
       const showingMessages = state.view === "messages";
       viewMessages.classList.toggle("active", showingMessages);
       viewCalls.classList.toggle("active", !showingMessages);
@@ -3709,6 +4802,11 @@ HTML_TEMPLATE = """<!doctype html>
         renderCallList();
       }
       renderContent();
+      syncInputsFromState();
+      renderChrome();
+      renderActiveFilters();
+      schedulePersistState();
+      scheduleSyncScrollTopButtons();
     }
 
     viewMessages.addEventListener("click", () => {
@@ -3731,8 +4829,7 @@ HTML_TEMPLATE = """<!doctype html>
       state.threadDateTo = state.messageDateTo || "";
       state.focusCallKey = null;
       state.focusTimestamp = null;
-      renderMessageList();
-      renderContent();
+      renderView();
       scrollMainToTop();
     });
 
@@ -3740,73 +4837,61 @@ HTML_TEMPLATE = """<!doctype html>
       const row = event.target.closest(".list-row[data-key]");
       if (!row || !callList.contains(row)) return;
       state.callKey = row.dataset.key;
-      renderCallList();
-      renderContent();
+      renderView();
     });
 
     messageSearch.addEventListener("input", event => {
-      state.messageSearch = event.target.value.trim().toLowerCase();
-      renderMessageList();
-      renderContent();
-      scrollMainToTop();
+      state.messageSearch = event.target.value.trim();
+      scheduleMessageSearchRender();
     });
 
     categoryFilter.addEventListener("change", event => {
       state.category = event.target.value;
-      renderMessageList();
-      renderContent();
+      renderView();
     });
 
     messageDateFrom.addEventListener("change", event => {
       state.messageDateFrom = event.target.value || "";
       state.threadDateFrom = state.messageDateFrom;
       state.threadDateTo = state.messageDateTo;
-      renderMessageList();
-      renderContent();
+      renderView();
     });
 
     messageDateTo.addEventListener("change", event => {
       state.messageDateTo = event.target.value || "";
       state.threadDateFrom = state.messageDateFrom;
       state.threadDateTo = state.messageDateTo;
-      renderMessageList();
-      renderContent();
+      renderView();
     });
 
     clearMessageDateRange.addEventListener("click", () => {
       clearAllMessageDateRanges();
-      renderMessageList();
-      renderContent();
+      renderView();
     });
 
     callSearch.addEventListener("input", event => {
-      state.callSearch = event.target.value.trim().toLowerCase();
-      renderCallList();
-      renderContent();
+      state.callSearch = event.target.value.trim();
+      scheduleCallSearchRender();
     });
 
     callGroupFilter.addEventListener("change", event => {
       state.callGroup = event.target.value;
-      renderCallList();
-      renderContent();
+      renderView();
     });
 
     callDirectionFilter.addEventListener("change", event => {
       state.callDirection = event.target.value;
-      renderCallList();
-      renderContent();
+      renderView();
     });
 
     callDateFrom.addEventListener("change", event => {
       state.callDateFrom = event.target.value || "";
-      renderCallList();
-      renderContent();
+      renderView();
     });
 
     callDateTo.addEventListener("change", event => {
       state.callDateTo = event.target.value || "";
-      renderCallList();
-      renderContent();
+      renderView();
     });
 
     clearCallDateRange.addEventListener("click", () => {
@@ -3814,8 +4899,86 @@ HTML_TEMPLATE = """<!doctype html>
       state.callDateTo = "";
       callDateFrom.value = "";
       callDateTo.value = "";
-      renderCallList();
-      renderContent();
+      renderView();
+    });
+
+    if (sidebarListWrap) {
+      sidebarListWrap.addEventListener("scroll", scheduleSyncScrollTopButtons, { passive: true });
+    }
+    if (mainScrollWrap) {
+      mainScrollWrap.addEventListener("scroll", scheduleSyncScrollTopButtons, { passive: true });
+    }
+    if (sidebarScrollTopButton) {
+      sidebarScrollTopButton.addEventListener("click", () => {
+        if (!sidebarListWrap) return;
+        sidebarListWrap.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+    if (mainScrollTopButton) {
+      mainScrollTopButton.addEventListener("click", () => {
+        if (!mainScrollWrap) return;
+        mainScrollWrap.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+    window.addEventListener("resize", scheduleSyncScrollTopButtons);
+
+    activeFilterBar.addEventListener("click", event => {
+      const button = event.target.closest("[data-clear-filter]");
+      if (!button || !activeFilterBar.contains(button)) return;
+      const filterKey = button.dataset.clearFilter;
+      if (filterKey === "message-search") state.messageSearch = "";
+      if (filterKey === "message-category") state.category = "";
+      if (filterKey === "message-date") {
+        state.messageDateFrom = "";
+        state.messageDateTo = "";
+      }
+      if (filterKey === "thread-date") {
+        state.threadDateFrom = "";
+        state.threadDateTo = "";
+      }
+      if (filterKey === "message-view-filter") state.messageViewFilter = "all";
+      if (filterKey === "call-search") state.callSearch = "";
+      if (filterKey === "call-group") state.callGroup = "";
+      if (filterKey === "call-direction") state.callDirection = "";
+      if (filterKey === "call-date") {
+        state.callDateFrom = "";
+        state.callDateTo = "";
+      }
+      renderView();
+    });
+
+    window.addEventListener("keydown", event => {
+      const activeTarget = document.activeElement;
+      const key = String(event.key || "");
+
+      if ((key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey) || ((event.metaKey || event.ctrlKey) && key.toLowerCase() === "k")) {
+        if (!isTypingTarget(activeTarget)) {
+          event.preventDefault();
+          focusActiveSearchField();
+        }
+        return;
+      }
+
+      if (isTypingTarget(activeTarget)) {
+        if (key === "Escape") activeTarget.blur();
+        return;
+      }
+
+      if (key === "[") {
+        event.preventDefault();
+        moveSidebarSelection(-1);
+        return;
+      }
+      if (key === "]") {
+        event.preventDefault();
+        moveSidebarSelection(1);
+        return;
+      }
+      if (key === "Escape") {
+        if (clearCurrentSearch()) {
+          event.preventDefault();
+        }
+      }
     });
 
     function callPrimaryTimestampValue(call) {
@@ -3852,6 +5015,10 @@ HTML_TEMPLATE = """<!doctype html>
       }
     }
 
+    restoreState();
+    syncInputsFromState();
+    renderChrome();
+    scheduleSyncScrollTopButtons();
     scheduleIdleWork(primeCallCaches);
     renderView();
   </script>
