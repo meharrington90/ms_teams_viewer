@@ -86,6 +86,7 @@ def init_thread_record(thread_id: str) -> dict:
         "meeting": None,
         "participants": [],
         "participant_ids": [],
+        "current_member_ids": [],
         "last_message": None,
         "messages": [],
         "source_files": [],

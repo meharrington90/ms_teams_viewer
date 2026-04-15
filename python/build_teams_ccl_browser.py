@@ -59,6 +59,8 @@ HTML_TEMPLATE = """<!doctype html>
       --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
       --sans: "Avenir Next", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
       --display: "Avenir Next", "Segoe UI Variable", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --pcb-brand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 180' fill='none'%3E%3Cg stroke='%23dbeafe' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' stroke-opacity='.30'%3E%3Cpath d='M10 28h36c8 0 12 4 12 12v18c0 8 4 12 12 12h30'/%3E%3Cpath d='M140 18v22c0 8-4 12-12 12h-18c-8 0-12 4-12 12v24'/%3E%3Cpath d='M78 118h28c8 0 12-4 12-12V88c0-8 4-12 12-12h34'/%3E%3Cpath d='M188 56v20c0 8-4 12-12 12h-16c-8 0-12 4-12 12v28'/%3E%3Cpath d='M24 144h30c8 0 12-4 12-12v-10c0-8 4-12 12-12h28'/%3E%3Cpath d='M118 146h22c8 0 12-4 12-12v-8c0-8 4-12 12-12h24'/%3E%3Cpath d='M36 84h18c8 0 12-4 12-12V58c0-8 4-12 12-12h20'/%3E%3Cpath d='M174 130v-18c0-8 4-12 12-12h20'/%3E%3C/g%3E%3Cg fill='%23ffffff' fill-opacity='.38'%3E%3Ccircle cx='10' cy='28' r='3'/%3E%3Ccircle cx='100' cy='52' r='3'/%3E%3Ccircle cx='140' cy='18' r='3'/%3E%3Ccircle cx='164' cy='76' r='3'/%3E%3Ccircle cx='188' cy='130' r='3'/%3E%3Ccircle cx='24' cy='144' r='3'/%3E%3Ccircle cx='106' cy='110' r='3'/%3E%3Ccircle cx='186' cy='146' r='3'/%3E%3Ccircle cx='98' cy='46' r='3'/%3E%3C/g%3E%3C/svg%3E");
+      --pcb-panel: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96' fill='none'%3E%3Cg stroke='%231d4ed8' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' stroke-opacity='.18'%3E%3Cpath d='M10 18h18c6 0 9 3 9 9v9c0 6 3 9 9 9h16'/%3E%3Cpath d='M70 12v18c0 6-3 9-9 9H49c-6 0-9 3-9 9v11'/%3E%3Cpath d='M18 72h19c6 0 9-3 9-9v-4c0-6 3-9 9-9h13'/%3E%3C/g%3E%3Cg fill='%231d4ed8' fill-opacity='.12'%3E%3Ccircle cx='10' cy='18' r='2.6'/%3E%3Ccircle cx='62' cy='45' r='2.6'/%3E%3Ccircle cx='70' cy='12' r='2.6'/%3E%3Ccircle cx='18' cy='72' r='2.6'/%3E%3C/g%3E%3C/svg%3E");
     }
     html {
       color-scheme: light;
@@ -100,10 +102,10 @@ HTML_TEMPLATE = """<!doctype html>
       font-family: var(--sans);
       color: var(--ink);
       background:
-        radial-gradient(circle at 0% 0%, rgba(37,99,235,.18), transparent 26%),
-        radial-gradient(circle at 100% 0%, rgba(249,115,22,.16), transparent 24%),
-        radial-gradient(circle at 55% 100%, rgba(15,118,110,.14), transparent 24%),
-        linear-gradient(180deg, #f8fbff 0%, #edf3ff 52%, #fff8ef 100%);
+        radial-gradient(circle at 0% 0%, rgba(37,99,235,.16), transparent 28%),
+        radial-gradient(circle at 100% 0%, rgba(14,165,233,.12), transparent 24%),
+        radial-gradient(circle at 55% 100%, rgba(15,118,110,.10), transparent 24%),
+        linear-gradient(180deg, #f8fbff 0%, #edf4ff 52%, #eef7fb 100%);
       padding: 8px;
       position: relative;
     }
@@ -131,7 +133,7 @@ HTML_TEMPLATE = """<!doctype html>
       left: 3%;
       bottom: 4%;
       border-radius: 999px;
-      background: rgba(249,115,22,.14);
+      background: rgba(14,165,233,.12);
     }
     button,
     input,
@@ -193,6 +195,7 @@ HTML_TEMPLATE = """<!doctype html>
     }
     .brand-card {
       position: relative;
+      isolation: isolate;
       display: grid;
       align-content: start;
       gap: 6px;
@@ -200,10 +203,36 @@ HTML_TEMPLATE = """<!doctype html>
       border-radius: 20px;
       overflow: hidden;
       background:
-        radial-gradient(circle at 18% 18%, rgba(255,255,255,.26), transparent 18%),
-        linear-gradient(140deg, #173d8f 0%, #2563eb 42%, #3478f6 62%, #fb923c 100%);
+        linear-gradient(145deg, #102447 0%, #173874 34%, #1d4ed8 68%, #0f766e 100%);
       color: #fff;
-      box-shadow: 0 16px 34px rgba(37,99,235,.22);
+      box-shadow: 0 16px 34px rgba(29,78,216,.20);
+    }
+    .brand-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 42%);
+      opacity: .9;
+      z-index: 0;
+    }
+    .brand-card::after {
+      content: "";
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      bottom: 14px;
+      width: 158px;
+      pointer-events: none;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 74%),
+        var(--pcb-brand) center / cover no-repeat;
+      clip-path: polygon(24% 0, 100% 0, 100% 100%, 0 100%, 0 28%);
+      opacity: .74;
+      z-index: 0;
     }
     .brand-card > * {
       position: relative;
@@ -419,6 +448,9 @@ HTML_TEMPLATE = """<!doctype html>
         inset 0 1px 0 rgba(255,255,255,.78),
         0 6px 12px rgba(15,23,42,.04);
       cursor: pointer;
+      content-visibility: auto;
+      contain: layout paint style;
+      contain-intrinsic-size: 108px;
       transition:
         transform .18s var(--ease),
         box-shadow .18s var(--ease),
@@ -584,6 +616,7 @@ HTML_TEMPLATE = """<!doctype html>
     }
     .card {
       position: relative;
+      isolation: isolate;
       overflow: hidden;
       padding: 10px 10px 12px;
       border-radius: var(--radius-lg);
@@ -594,24 +627,46 @@ HTML_TEMPLATE = """<!doctype html>
       background:
         linear-gradient(180deg, rgba(255,255,255,.96), rgba(245,248,255,.86));
     }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 0 auto;
+      width: 34%;
+      pointer-events: none;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0) 0%, var(--card-geo, rgba(37,99,235,.14)) 24%, rgba(255,255,255,0) 100%);
+      clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%, 0 34%);
+      opacity: .82;
+      z-index: 0;
+    }
     .card::after {
       content: "";
       position: absolute;
-      width: 130px;
-      height: 130px;
-      border-radius: 999px;
-      right: -38px;
-      top: -38px;
-      background: var(--card-glow, rgba(37,99,235,.12));
+      top: 10px;
+      right: 10px;
+      bottom: 10px;
+      width: 72px;
+      pointer-events: none;
+      border: 1px solid var(--card-outline, rgba(37,99,235,.10));
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 76%),
+        var(--pcb-panel) center / 92px 92px no-repeat;
+      clip-path: polygon(24% 0, 100% 0, 100% 100%, 0 100%, 0 26%);
+      opacity: .70;
+      z-index: 0;
     }
     .threads-card {
-      --card-glow: rgba(37,99,235,.14);
+      --card-geo: rgba(37,99,235,.16);
+      --card-outline: rgba(37,99,235,.12);
     }
     .messages-card {
-      --card-glow: rgba(15,118,110,.14);
+      --card-geo: rgba(14,165,233,.16);
+      --card-outline: rgba(14,165,233,.12);
     }
     .calls-card {
-      --card-glow: rgba(249,115,22,.18);
+      --card-geo: rgba(15,118,110,.16);
+      --card-outline: rgba(15,118,110,.12);
     }
     .card .label {
       position: relative;
@@ -673,19 +728,40 @@ HTML_TEMPLATE = """<!doctype html>
         0 0 0 1px rgba(255,255,255,.56) inset;
     }
     .detail-hero {
+      isolation: isolate;
       padding: 13px;
       margin-bottom: 10px;
       position: relative;
       overflow: hidden;
     }
+    .detail-hero::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 0 auto;
+      width: 28%;
+      pointer-events: none;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0) 0%, rgba(37,99,235,.12) 22%, rgba(14,165,233,.05) 72%, rgba(255,255,255,0) 100%);
+      clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%, 0 34%);
+      opacity: .84;
+      z-index: 0;
+    }
     .detail-hero::after {
       content: "";
       position: absolute;
-      inset: -40px -30px auto auto;
-      width: 140px;
-      height: 140px;
-      border-radius: 999px;
-      background: rgba(37,99,235,.08);
+      top: 12px;
+      right: 14px;
+      bottom: 12px;
+      width: 92px;
+      pointer-events: none;
+      border: 1px solid rgba(37,99,235,.10);
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 74%),
+        var(--pcb-panel) center / 96px 96px no-repeat;
+      clip-path: polygon(24% 0, 100% 0, 100% 100%, 0 100%, 0 28%);
+      opacity: .68;
+      z-index: 0;
     }
     .detail-hero > * {
       position: relative;
@@ -870,6 +946,9 @@ HTML_TEMPLATE = """<!doctype html>
     }
     .stat-card {
       padding: 10px 10px 11px;
+      content-visibility: auto;
+      contain: layout paint style;
+      contain-intrinsic-size: 78px;
     }
     .stat-card .k,
     .meta-block .k,
@@ -981,6 +1060,9 @@ HTML_TEMPLATE = """<!doctype html>
     }
     .search-group {
       padding: 11px;
+      content-visibility: auto;
+      contain: layout paint style;
+      contain-intrinsic-size: 280px;
     }
     .search-group-header {
       display: flex;
@@ -1009,6 +1091,9 @@ HTML_TEMPLATE = """<!doctype html>
       gap: 10px;
       align-items: end;
       min-width: 0;
+      content-visibility: auto;
+      contain: layout paint style;
+      contain-intrinsic-size: 144px;
     }
     .msg-row.self {
       grid-template-columns: minmax(0, 1fr) 40px;
@@ -1279,6 +1364,9 @@ HTML_TEMPLATE = """<!doctype html>
       min-width: 0;
       font-size: 13px;
       line-height: 1.35;
+      content-visibility: auto;
+      contain: layout paint style;
+      contain-intrinsic-size: 78px;
     }
     .meta-block .k {
       margin-bottom: 3px;
@@ -1589,6 +1677,7 @@ HTML_TEMPLATE = """<!doctype html>
     const LINKED_CALL_BY_MESSAGE_CACHE = new WeakMap();
     const MESSAGE_HIDDEN_META_CACHE = new WeakMap();
     const MESSAGE_SEARCH_TEXT_CACHE = new WeakMap();
+    const SEARCH_GROUPS_CACHE = new Map();
     for (const call of DATA.calls || []) {
       rememberPerson(call.originator_id, call.originator_display_name);
       rememberPerson(call.target_id, call.target_display_name);
@@ -1795,6 +1884,34 @@ HTML_TEMPLATE = """<!doctype html>
       "#8A6F5A": { bg: "#E9D7C6", outline: "#4D3B2C", block: "#FBF5F0", title: "#4D3B2C" },
     };
 
+    function threadAllParticipantNames(thread) {
+      const names = dedupe([
+        ...(thread.participants || []).map(value => cleanCallParticipantName(value)),
+        ...(thread.participant_ids || []).map(guid => personNameForGuid(guid)),
+      ].filter(Boolean));
+      return names;
+    }
+
+    function threadExternalParticipantNames(thread) {
+      return threadAllParticipantNames(thread)
+        .filter(name => normalizeName(name) !== CURRENT_USER_NAME);
+    }
+
+    function isPlaceholderThreadLabel(label) {
+      const normalized = normalizeName(label || "");
+      return !normalized || normalized === "just me" || normalized === CURRENT_USER_NAME;
+    }
+
+    function threadDisplayLabel(thread) {
+      const fallback = stripFcs(thread.label || thread.id || "Conversation");
+      if (thread.category === "chat_space" && isPlaceholderThreadLabel(fallback)) {
+        const others = threadExternalParticipantNames(thread);
+        if (others.length === 1) return others[0];
+        if (others.length > 1) return summarizeNames(others, 2);
+      }
+      return fallback;
+    }
+
     function rememberDirectChatThread(thread) {
       if (!thread || thread.category !== "chat_space") return;
       if (!Array.isArray(thread.messages) || thread.messages.length === 0) return;
@@ -1828,6 +1945,7 @@ HTML_TEMPLATE = """<!doctype html>
         THREAD_BY_ID.set(thread.id, thread);
       }
       for (const message of thread.messages || []) {
+        message.__thread_id = thread && thread.id ? thread.id : "";
         rememberPerson(message.sender_id, message.sender_display_name);
       }
       rememberDirectChatThread(thread);
@@ -1954,14 +2072,66 @@ HTML_TEMPLATE = """<!doctype html>
       return combined;
     }
 
+    function threadCurrentMemberIds(thread) {
+      return dedupe(((thread && thread.current_member_ids) || []).map(normalizeGuid).filter(Boolean));
+    }
+
+    function threadCurrentMemberSet(thread) {
+      return new Set(threadCurrentMemberIds(thread));
+    }
+
+    function threadParticipantCount(thread) {
+      const currentIds = threadCurrentMemberIds(thread);
+      if (currentIds.length) return currentIds.length;
+      return normalizeParticipantList(threadParticipantEntries(thread)).filter(entry => !entry.hidden).length;
+    }
+
+    function buildThreadScopedParticipantEntries(thread, ids = [], names = [], options = {}) {
+      const entries = [];
+      const currentIds = threadCurrentMemberSet(thread);
+      const hasCurrentRoster = currentIds.size > 0;
+      const normalizedIds = (ids || []).map(normalizeGuid);
+      const cleanedNames = (names || []).map(value => cleanCallParticipantName(value));
+      const maxLength = Math.max(normalizedIds.length, cleanedNames.length);
+
+      for (let index = 0; index < maxLength; index += 1) {
+        const guid = normalizedIds[index] || "";
+        const explicitName = cleanedNames[index] || "";
+        const resolvedName = explicitName || (guid ? personNameForGuid(guid) : "");
+        const hiddenBecauseRemoved = Boolean(options.forceHidden) || (hasCurrentRoster && guid ? !currentIds.has(guid) : false);
+        const hiddenBecauseUnresolved = !resolvedName;
+        entries.push({
+          id: guid,
+          name: resolvedName,
+          label: resolvedName || stripFcs(guid || explicitName || ""),
+          hidden: hiddenBecauseRemoved || hiddenBecauseUnresolved,
+        });
+      }
+
+      return entries.filter(entry => entry.id || entry.name || entry.label);
+    }
+
     function threadParticipantEntries(thread) {
       const entries = [];
-      const resolvedIds = (thread.participant_ids || []).map(normalizeGuid).filter(Boolean);
+      const currentIds = threadCurrentMemberSet(thread);
+      const hasCurrentRoster = currentIds.size > 0;
+      const resolvedIds = dedupe((thread.participant_ids || []).map(normalizeGuid).filter(Boolean));
       for (const guid of resolvedIds) {
-        entries.push({ id: guid, name: personNameForGuid(guid) });
+        entries.push({
+          id: guid,
+          name: personNameForGuid(guid),
+          hidden: hasCurrentRoster ? !currentIds.has(guid) : false,
+        });
       }
       for (const name of thread.participants || []) {
-        entries.push({ id: "", name: cleanCallParticipantName(name) });
+        const cleanedName = cleanCallParticipantName(name);
+        if (!cleanedName) continue;
+        const guid = personGuidForName(cleanedName);
+        entries.push({
+          id: guid,
+          name: cleanedName,
+          hidden: hasCurrentRoster && guid ? !currentIds.has(guid) : false,
+        });
       }
       return entries;
     }
@@ -2376,16 +2546,23 @@ HTML_TEMPLATE = """<!doctype html>
       return parts.join(" | ");
     }
 
-    function isSystemMessage(message) {
+    function messageIsCallEvent(message) {
       return Boolean(
         message &&
         (
-          message.quality === "event" ||
           message.synthetic_call ||
           message.message_type === "Event/Call" ||
-          isMembershipEvent(message)
+          message.message_type === "Call/History"
         )
       );
+    }
+
+    function messageIsSystemEventRecord(message) {
+      return Boolean(message && message.quality === "event" && !messageIsCallEvent(message));
+    }
+
+    function isSystemMessage(message) {
+      return Boolean(message && (messageIsSystemEventRecord(message) || messageIsCallEvent(message)));
     }
 
     function messageDayKey(message) {
@@ -2480,7 +2657,12 @@ HTML_TEMPLATE = """<!doctype html>
           entries.push({ key: "thread-date", label: `Timeline: ${formatDateRangeLabel(state.threadDateFrom, state.threadDateTo)}` });
         }
         if (state.messageViewFilter && state.messageViewFilter !== "all") {
-          const label = state.messageViewFilter === "messages" ? "Messages only" : "Events only";
+          const messageViewFilterLabels = {
+            messages: "Messages only",
+            calls: "Calls only",
+            events: "System events only",
+          };
+          const label = messageViewFilterLabels[state.messageViewFilter] || state.messageViewFilter;
           entries.push({ key: "message-view-filter", label: `View: ${label}` });
         }
       } else {
@@ -2583,7 +2765,7 @@ HTML_TEMPLATE = """<!doctype html>
           state.expandHiddenData = parsed.expandHiddenData;
         }
         if (!["messages", "calls"].includes(state.view)) state.view = "messages";
-        if (!["all", "messages", "events"].includes(state.messageViewFilter)) {
+        if (!["all", "messages", "calls", "events"].includes(state.messageViewFilter)) {
           state.messageViewFilter = "all";
         }
       } catch (error) {
@@ -2615,11 +2797,48 @@ HTML_TEMPLATE = """<!doctype html>
         return true;
       }
       if (state.view === "messages" && state.messageSearch) {
-        state.messageSearch = "";
+        clearMessageSearchState();
         renderView();
         return true;
       }
       return false;
+    }
+
+    function clearMessageSearchState() {
+      state.messageSearch = "";
+      if (messageSearch) messageSearch.value = "";
+      window.clearTimeout(scheduleSearchGroupsComputation.timer);
+      scheduleSearchGroupsComputation.pendingSignature = "";
+    }
+
+    function openThreadView(options = {}) {
+      const threadId = String(options.threadId || "");
+      if (!threadId) return;
+      state.view = "messages";
+      state.threadId = threadId;
+      if (options.clearSearch) {
+        clearMessageSearchState();
+      }
+      if (options.clearCategory) {
+        state.category = "";
+      }
+      state.messageViewFilter = options.viewFilter || "all";
+      if (options.syncThreadDateToSidebar) {
+        state.threadDateFrom = state.messageDateFrom || "";
+        state.threadDateTo = state.messageDateTo || "";
+      } else {
+        state.threadDateFrom = "";
+        state.threadDateTo = "";
+      }
+      state.focusTimestamp = options.focusTimestamp || null;
+      state.focusCallKey = options.focusCallKey || null;
+      renderView();
+      if (options.revealInSidebar) {
+        revealActiveListRow(threadList);
+      }
+      if (options.scrollTop) {
+        scrollMainToTop();
+      }
     }
 
     function revealActiveListRow(scope) {
@@ -2697,6 +2916,7 @@ HTML_TEMPLATE = """<!doctype html>
       if (!hasSidebarMessageDateRange() && cacheKey && THREAD_SEARCH_TEXT_CACHE.has(cacheKey)) {
         return THREAD_SEARCH_TEXT_CACHE.get(cacheKey);
       }
+      const displayLabel = threadDisplayLabel(thread);
       const messageTerms = visibleSidebarThreadMessages(thread).slice(0, 100).flatMap(message => [
         message.content_text || "",
         message.content_html || "",
@@ -2705,6 +2925,7 @@ HTML_TEMPLATE = """<!doctype html>
       ]);
       const parts = [
         thread.label,
+        displayLabel,
         thread.id,
         thread.category,
         ...(thread.participants || []),
@@ -2742,7 +2963,7 @@ HTML_TEMPLATE = """<!doctype html>
       const terms = searchTerms();
       if (!query) return 2;
       const candidates = dedupe([
-        stripFcs(thread.label || ""),
+        threadDisplayLabel(thread),
         ...(thread.participants || []).map(value => stripFcs(value)),
       ].filter(Boolean));
       let best = 2;
@@ -2884,6 +3105,10 @@ HTML_TEMPLATE = """<!doctype html>
       if (message.message_type === "ThreadActivity/DeleteMember") {
         const meta = messageHiddenMeta(message);
         return truncate(meta && meta.previewLabel ? meta.previewLabel : "Member removed");
+      }
+      if (message.message_type === "ThreadActivity/TopicUpdate") {
+        const parsed = parseTopicUpdateEvent(message);
+        return truncate(`Topic updated: ${parsed.topic || "Unknown topic"}`);
       }
       return truncate(stripFcs(message.content_text || message.message_type || ""));
     }
@@ -3342,6 +3567,7 @@ HTML_TEMPLATE = """<!doctype html>
         return MESSAGE_HIDDEN_META_CACHE.get(message);
       }
       let value = null;
+      const sourceThread = message && message.__thread_id ? THREAD_BY_ID.get(message.__thread_id) : null;
       if (message.synthetic_call || message.message_type === "Event/Call") {
         const entries = callEventParticipantEntries(message);
         const meta = hiddenEntryMeta(entries, "participants");
@@ -3353,7 +3579,7 @@ HTML_TEMPLATE = """<!doctype html>
         } : null;
       } else if (message.message_type === "ThreadActivity/AddMember") {
         const parsed = parseAddMemberEvent(message);
-        const entries = buildParticipantEntries(parsed.addedIds, parsed.addedNames);
+        const entries = buildThreadScopedParticipantEntries(sourceThread, parsed.addedIds, parsed.addedNames);
         const meta = hiddenEntryMeta(entries, "members");
         value = {
           count: meta.count,
@@ -3363,7 +3589,7 @@ HTML_TEMPLATE = """<!doctype html>
         };
       } else if (message.message_type === "ThreadActivity/MemberJoined") {
         const parsed = parseMemberJoinedEvent(message);
-        const entries = buildParticipantEntries(parsed.joinedIds, parsed.joinedNames);
+        const entries = buildThreadScopedParticipantEntries(sourceThread, parsed.joinedIds, parsed.joinedNames);
         const meta = hiddenEntryMeta(entries, "members");
         value = {
           count: meta.count,
@@ -3373,7 +3599,7 @@ HTML_TEMPLATE = """<!doctype html>
         };
       } else if (message.message_type === "ThreadActivity/DeleteMember") {
         const parsed = parseDeleteMemberEvent(message);
-        const entries = buildParticipantEntries(parsed.removedIds, parsed.removedNames);
+        const entries = buildThreadScopedParticipantEntries(sourceThread, parsed.removedIds, parsed.removedNames, { forceHidden: true });
         const meta = hiddenEntryMeta(entries, "members");
         value = {
           count: meta.count,
@@ -3390,6 +3616,7 @@ HTML_TEMPLATE = """<!doctype html>
       if (message.message_type === "ThreadActivity/AddMember") return "Member Added";
       if (message.message_type === "ThreadActivity/MemberJoined") return "Member Joined";
       if (message.message_type === "ThreadActivity/DeleteMember") return "Member Removed";
+      if (message.message_type === "ThreadActivity/TopicUpdate") return "Topic Updated";
       if (messageHasAttachments(message)) {
         if (message.content_text) return "Message + Attachment";
         return messageAttachmentPreview(message) || "Attachment";
@@ -3429,15 +3656,20 @@ HTML_TEMPLATE = """<!doctype html>
           ? {
               id: normalizeGuid(value.id || value.guid || value.userId || ""),
               name: cleanCallParticipantName(value.name || value.display_name || value.displayName || ""),
+              label: cleanCallParticipantName(value.label || value.friendlyname || ""),
+              hidden: Boolean(value.hidden),
             }
           : {
               id: "",
               name: cleanCallParticipantName(value),
+              label: "",
+              hidden: false,
             };
-      const guid = normalizeGuid(entry.id);
-      const resolvedName = cleanCallParticipantName(entry.name || (guid ? personNameForGuid(guid) : ""));
-        const visibleLabel = resolvedName && !looksLikeGuid(resolvedName) ? resolvedName : "";
-        const hiddenLabel = stripFcs(guid || entry.name || "");
+        const guid = normalizeGuid(entry.id);
+        const resolvedName = cleanCallParticipantName(entry.name || (guid ? personNameForGuid(guid) : ""));
+        const explicitHidden = Boolean(entry.hidden);
+        const visibleLabel = !explicitHidden && resolvedName && !looksLikeGuid(resolvedName) ? resolvedName : "";
+        const hiddenLabel = stripFcs(entry.label || resolvedName || guid || entry.name || "");
         const entryIdKey = guid || "";
         const visibleKey = normalizeName(visibleLabel);
         const hiddenKey = normalizeName(hiddenLabel);
@@ -3549,19 +3781,13 @@ HTML_TEMPLATE = """<!doctype html>
     function initParticipantChatLinks(scope) {
       for (const element of scope.querySelectorAll(".open-participant-chat")) {
         element.addEventListener("click", () => {
-          state.view = "messages";
-          state.threadId = element.dataset.threadId;
-          state.category = "";
-          state.messageViewFilter = "all";
-          state.threadDateFrom = "";
-          state.threadDateTo = "";
-          state.focusTimestamp = null;
-          state.focusCallKey = null;
-          state.messageSearch = "";
-          messageSearch.value = "";
-          categoryFilter.value = "";
-          renderView();
-          scrollMainToTop();
+          openThreadView({
+            threadId: element.dataset.threadId,
+            clearSearch: true,
+            clearCategory: true,
+            revealInSidebar: true,
+            scrollTop: true,
+          });
         });
       }
     }
@@ -3598,7 +3824,7 @@ HTML_TEMPLATE = """<!doctype html>
       const actorName = stripFcs(
         message.sender_display_name ||
         personNameForGuid(actorId) ||
-        "System"
+        ""
       );
       const members = resolveMemberEntries(payload && payload.members);
       return {
@@ -3610,7 +3836,7 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function parseDeleteMemberEvent(message) {
-      const actorId = normalizeGuid(message.sender_id || "");
+      const actorId = normalizeGuid(message.sender_id || extractGuids(message.content_text || "")[0] || "");
       const actorName = stripFcs(
         message.sender_display_name ||
         personNameForGuid(actorId) ||
@@ -3630,11 +3856,51 @@ HTML_TEMPLATE = """<!doctype html>
       };
     }
 
+    function threadActivityXmlValue(message, tagName) {
+      const pattern = new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`, "i");
+      const match = String(message && message.content_html || "").match(pattern);
+      return cleanCallParticipantName(match && match[1] ? match[1] : "");
+    }
+
+    function parseTopicUpdateEvent(message) {
+      const actorId = normalizeGuid(
+        threadActivityXmlValue(message, "initiator") ||
+        extractGuids(message.content_text || "")[0] ||
+        message.sender_id ||
+        ""
+      );
+      const actorName = stripFcs(
+        message.sender_display_name ||
+        personNameForGuid(actorId) ||
+        ""
+      );
+      let topic = stripFcs(threadActivityXmlValue(message, "value") || "");
+      if (!topic) {
+        const rawText = stripFcs(message.content_text || "");
+        const match = rawText.match(/^\\d+\\s+(?:8:orgid:)?[0-9a-f-]{36}\\s+(.+)$/i);
+        topic = stripFcs(match ? match[1] : rawText);
+      }
+      return {
+        actorId,
+        actorName,
+        topic,
+      };
+    }
+
     function isMembershipEvent(message) {
       return [
         "ThreadActivity/AddMember",
         "ThreadActivity/MemberJoined",
         "ThreadActivity/DeleteMember",
+      ].includes(message.message_type);
+    }
+
+    function isStructuredThreadActivityEvent(message) {
+      return [
+        "ThreadActivity/AddMember",
+        "ThreadActivity/MemberJoined",
+        "ThreadActivity/DeleteMember",
+        "ThreadActivity/TopicUpdate",
       ].includes(message.message_type);
     }
 
@@ -3647,9 +3913,26 @@ HTML_TEMPLATE = """<!doctype html>
       `;
     }
 
+    function renderThreadActorBlock(thread, ids = [], names = [], emptyLabel = "No actor was resolved.") {
+      const actorEntries = buildThreadScopedParticipantEntries(thread, ids, names);
+      const hasSource = (ids || []).some(Boolean) || (names || []).some(Boolean);
+      if (!hasSource && !actorEntries.length) {
+        return `<div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(emptyLabel)}</div></div>`;
+      }
+      return `
+        <div class="call-event-block">
+          <div class="k">Actor</div>
+          ${renderExpandableChipGroup(actorEntries, {
+            emptyLabel,
+            enableChatLinks: ["team_chat", "thread"].includes(thread.category),
+          })}
+        </div>
+      `;
+    }
+
     function renderAddMemberEventBody(message, thread) {
       const parsed = parseAddMemberEvent(message);
-      const addedEntries = buildParticipantEntries(parsed.addedIds, parsed.addedNames);
+      const addedEntries = buildThreadScopedParticipantEntries(thread, parsed.addedIds, parsed.addedNames);
       const addedCount = parsed.addedIds.length;
       const cardHtml = `
         <div class="call-event" style="--call-bg:#e4e8ed;--call-outline:#66727f;--call-block-bg:#f4f6f8;--call-title:#3e4852;">
@@ -3657,9 +3940,9 @@ HTML_TEMPLATE = """<!doctype html>
             <div class="call-event-title">${escapeHtml(addedCount > 1 ? "Members Added" : "Member Added")}</div>
           </div>
           <div class="call-event-grid">
-            <div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(systemEventActorLabel())}</div></div>
+            ${renderThreadActorBlock(thread, parsed.actorId ? [parsed.actorId] : [], parsed.actorName ? [parsed.actorName] : [])}
             <div class="call-event-block"><div class="k">Added Count</div><div>${escapeHtml(String(addedCount || 0))}</div></div>
-            <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(stripFcs(thread.label || thread.id || ""))}</div></div>
+            <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(threadDisplayLabel(thread))}</div></div>
             ${renderMembershipNamesBlock("Added", addedEntries, "No added members were resolved.")}
           </div>
         </div>
@@ -3669,7 +3952,7 @@ HTML_TEMPLATE = """<!doctype html>
 
     function renderMemberJoinedEventBody(message, thread) {
       const parsed = parseMemberJoinedEvent(message);
-      const joinedEntries = buildParticipantEntries(parsed.joinedIds, parsed.joinedNames);
+      const joinedEntries = buildThreadScopedParticipantEntries(thread, parsed.joinedIds, parsed.joinedNames);
       const joinedCount = parsed.joinedIds.length;
       const cardHtml = `
         <div class="call-event" style="--call-bg:#e4f0e9;--call-outline:#5b7f69;--call-block-bg:#f5faf7;--call-title:#2f5e40;">
@@ -3677,9 +3960,9 @@ HTML_TEMPLATE = """<!doctype html>
             <div class="call-event-title">${escapeHtml(joinedCount > 1 ? "Members Joined" : "Member Joined")}</div>
           </div>
           <div class="call-event-grid">
-            <div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(systemEventActorLabel())}</div></div>
+            ${renderThreadActorBlock(thread, parsed.actorId ? [parsed.actorId] : [], parsed.actorName ? [parsed.actorName] : [])}
             <div class="call-event-block"><div class="k">Joined Count</div><div>${escapeHtml(String(joinedCount || 0))}</div></div>
-            <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(stripFcs(thread.label || thread.id || ""))}</div></div>
+            <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(threadDisplayLabel(thread))}</div></div>
             ${renderMembershipNamesBlock("Joined", joinedEntries, "No joined members were resolved.")}
           </div>
         </div>
@@ -3689,7 +3972,7 @@ HTML_TEMPLATE = """<!doctype html>
 
     function renderDeleteMemberEventBody(message, thread) {
       const parsed = parseDeleteMemberEvent(message);
-      const removedEntries = buildParticipantEntries(parsed.removedIds, parsed.removedNames);
+      const removedEntries = buildThreadScopedParticipantEntries(thread, parsed.removedIds, parsed.removedNames, { forceHidden: true });
       const removedCount = parsed.removedIds.length;
       const cardHtml = `
         <div class="call-event" style="--call-bg:#f6ece4;--call-outline:#9a6b52;--call-block-bg:#fff7f1;--call-title:#7c523b;">
@@ -3697,10 +3980,28 @@ HTML_TEMPLATE = """<!doctype html>
             <div class="call-event-title">${escapeHtml(removedCount > 1 ? "Members Removed" : "Member Removed")}</div>
           </div>
           <div class="call-event-grid">
-            <div class="call-event-block"><div class="k">Actor</div><div>${escapeHtml(systemEventActorLabel())}</div></div>
+            ${renderThreadActorBlock(thread, parsed.actorId ? [parsed.actorId] : [], parsed.actorName ? [parsed.actorName] : [])}
             <div class="call-event-block"><div class="k">Removed Count</div><div>${escapeHtml(String(removedCount || 0))}</div></div>
-            <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(stripFcs(thread.label || thread.id || ""))}</div></div>
-            ${renderMembershipNamesBlock("Removed", removedEntries, "No removed members were resolved.")}
+            <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(threadDisplayLabel(thread))}</div></div>
+            ${renderMembershipNamesBlock("Removed", removedEntries, "Removed members are hidden because they are no longer in the current roster.")}
+          </div>
+        </div>
+      `;
+      return cardHtml;
+    }
+
+    function renderTopicUpdateEventBody(message, thread) {
+      const parsed = parseTopicUpdateEvent(message);
+      const updatedTopic = stripFcs(parsed.topic || threadDisplayLabel(thread) || thread.id || "");
+      const cardHtml = `
+        <div class="call-event" style="--call-bg:#e9edf9;--call-outline:#5a6d9d;--call-block-bg:#f6f8ff;--call-title:#334778;">
+          <div class="call-event-header">
+            <div class="call-event-title">Topic Updated</div>
+          </div>
+          <div class="call-event-grid">
+            ${renderThreadActorBlock(thread, parsed.actorId ? [parsed.actorId] : [], parsed.actorName ? [parsed.actorName] : [])}
+            <div class="call-event-block"><div class="k">Updated Topic</div><div>${escapeHtml(updatedTopic || "Unknown")}</div></div>
+            <div class="call-event-block"><div class="k">Current Conversation</div><div>${escapeHtml(threadDisplayLabel(thread))}</div></div>
           </div>
         </div>
       `;
@@ -3711,6 +4012,7 @@ HTML_TEMPLATE = """<!doctype html>
       if (message.message_type === "ThreadActivity/AddMember") return renderAddMemberEventBody(message, thread);
       if (message.message_type === "ThreadActivity/MemberJoined") return renderMemberJoinedEventBody(message, thread);
       if (message.message_type === "ThreadActivity/DeleteMember") return renderDeleteMemberEventBody(message, thread);
+      if (message.message_type === "ThreadActivity/TopicUpdate") return renderTopicUpdateEventBody(message, thread);
       return `<div class="body">${escapeHtml(message.content_text || "")}</div>`;
     }
 
@@ -3794,7 +4096,7 @@ HTML_TEMPLATE = """<!doctype html>
     }
 
     function callJumpLabel(target) {
-      const name = stripFcs(target.thread.label || target.thread.id || "Conversation");
+      const name = threadDisplayLabel(target.thread);
       const when = fmt(target.focusTimestamp);
       return when && when !== "[no_time]" ? `${name} [${when}]` : name;
     }
@@ -4026,12 +4328,16 @@ HTML_TEMPLATE = """<!doctype html>
       if (message.message_type === "ThreadActivity/DeleteMember") {
         return systemEventActorLabel();
       }
+      if (message.message_type === "ThreadActivity/TopicUpdate") {
+        return systemEventActorLabel();
+      }
       return stripFcs(message.sender_display_name || message.sender_id || "Unknown");
     }
 
     function messagePassesFilter(message) {
-      if (state.messageViewFilter === "messages") return message.quality !== "event";
-      if (state.messageViewFilter === "events") return message.quality === "event";
+      if (state.messageViewFilter === "messages") return !messageIsCallEvent(message) && !messageIsSystemEventRecord(message);
+      if (state.messageViewFilter === "calls") return messageIsCallEvent(message);
+      if (state.messageViewFilter === "events") return messageIsSystemEventRecord(message);
       return true;
     }
 
@@ -4189,6 +4495,7 @@ HTML_TEMPLATE = """<!doctype html>
       const attachments = messageAttachments(message);
       const parts = [
         thread.label,
+        threadDisplayLabel(thread),
         thread.id,
         ...(thread.participants || []),
         messageDisplaySender(message),
@@ -4223,6 +4530,10 @@ HTML_TEMPLATE = """<!doctype html>
         const parsed = parseDeleteMemberEvent(message);
         parts.push(parsed.actorName, ...(parsed.removedNames || []));
       }
+      if (message.message_type === "ThreadActivity/TopicUpdate") {
+        const parsed = parseTopicUpdateEvent(message);
+        parts.push(parsed.actorName, parsed.topic);
+      }
       const value = parts.filter(Boolean).join(" ").toLowerCase();
       MESSAGE_SEARCH_TEXT_CACHE.set(message, value);
       return value;
@@ -4230,17 +4541,14 @@ HTML_TEMPLATE = """<!doctype html>
 
     function includeMessageInSearchResults(message) {
       if (!message) return false;
-      if (message.message_type === "ThreadActivity/AddMember") return false;
-      if (message.message_type === "Call/History") return false;
-      if (message.synthetic_call) return false;
       return true;
     }
 
     function renderMessageBody(message, thread, useHighlight = false) {
-      if (message.synthetic_call || message.message_type === "Event/Call") {
+      if (messageIsCallEvent(message)) {
         return renderCallEventBody(message);
       }
-      if (isMembershipEvent(message)) {
+      if (isStructuredThreadActivityEvent(message)) {
         return renderMembershipEventBody(message, thread);
       }
       if (messageHasAttachments(message)) {
@@ -4276,8 +4584,14 @@ HTML_TEMPLATE = """<!doctype html>
         : escapeHtml(displayMessageType(message));
       const bodyHtml = renderMessageBody(message, thread, useHighlight);
       const hiddenMeta = messageHiddenMeta(message);
-      const openHidden = Boolean((hiddenMeta && hiddenMeta.count > 0) && (state.expandHiddenData || isFocused));
-      const shellAttrs = `class="${escapeHtml(classes)}${hiddenMeta && hiddenMeta.count > 0 ? " msg-collapsible" : ""}" data-call-key="${escapeHtml(messageLinkedCallKey(message))}" data-timestamp="${escapeHtml(String(timeValue(message.timestamp)))}"`;
+      const collapsibleSystemEvent = systemMessage && !messageIsCallEvent(message);
+      const hasCollapsibleContent = Boolean((hiddenMeta && hiddenMeta.count > 0) || collapsibleSystemEvent);
+      const openHidden = hasCollapsibleContent && (
+        (hiddenMeta && hiddenMeta.count > 0 && state.expandHiddenData) ||
+        isFocused ||
+        (collapsibleSystemEvent && isSearchMatch)
+      );
+      const shellAttrs = `class="${escapeHtml(classes)}${hasCollapsibleContent ? " msg-collapsible" : ""}" data-call-key="${escapeHtml(messageLinkedCallKey(message))}" data-timestamp="${escapeHtml(String(timeValue(message.timestamp)))}"`;
       const rowClasses = [
         "msg-row",
         selfMessage ? "self" : "",
@@ -4309,7 +4623,7 @@ HTML_TEMPLATE = """<!doctype html>
         `;
       const avatarLabel = senderInitials(systemMessage ? displayMessageType(message) : senderLabel, systemMessage ? 1 : 2);
 
-      if (hiddenMeta && hiddenMeta.count > 0) {
+      if (hasCollapsibleContent) {
         return `
           <article class="${escapeHtml(rowClasses)}" style="--msg-accent:${escapeHtml(accent)}">
             <div class="msg-avatar" aria-hidden="true">${escapeHtml(avatarLabel)}</div>
@@ -4317,7 +4631,7 @@ HTML_TEMPLATE = """<!doctype html>
               <details ${shellAttrs} ${openHidden ? "open" : ""}>
                 <summary>
                   ${headerHtml}
-                  <div class="msg-summary-note">${escapeHtml(hiddenMeta.label)}</div>
+                  ${hiddenMeta && hiddenMeta.count > 0 ? `<div class="msg-summary-note">${escapeHtml(hiddenMeta.label)}</div>` : ``}
                 </summary>
                 <div class="msg-body-wrap">
                   ${bodyHtml}
@@ -4341,7 +4655,62 @@ HTML_TEMPLATE = """<!doctype html>
       `;
     }
 
-    function searchResultGroups() {
+    function messageSearchSignature() {
+      const query = String(state.messageSearch || "").trim().toLowerCase();
+      if (!query) return "";
+      return JSON.stringify([
+        query,
+        state.category || "",
+        state.messageViewFilter || "all",
+        state.messageDateFrom || "",
+        state.messageDateTo || "",
+      ]);
+    }
+
+    function cacheSearchGroups(signature, groups) {
+      if (!signature) return;
+      if (SEARCH_GROUPS_CACHE.has(signature)) {
+        SEARCH_GROUPS_CACHE.delete(signature);
+      }
+      SEARCH_GROUPS_CACHE.set(signature, groups);
+      while (SEARCH_GROUPS_CACHE.size > 12) {
+        const oldest = SEARCH_GROUPS_CACHE.keys().next().value;
+        SEARCH_GROUPS_CACHE.delete(oldest);
+      }
+    }
+
+    function scheduleSearchGroupsComputation() {
+      const signature = messageSearchSignature();
+      if (!signature) {
+        window.clearTimeout(scheduleSearchGroupsComputation.timer);
+        scheduleSearchGroupsComputation.pendingSignature = "";
+        return;
+      }
+      if (SEARCH_GROUPS_CACHE.has(signature) || scheduleSearchGroupsComputation.pendingSignature === signature) {
+        return;
+      }
+      scheduleSearchGroupsComputation.pendingSignature = signature;
+      window.clearTimeout(scheduleSearchGroupsComputation.timer);
+      scheduleSearchGroupsComputation.timer = window.setTimeout(() => {
+        if (messageSearchSignature() !== signature) {
+          if (scheduleSearchGroupsComputation.pendingSignature === signature) {
+            scheduleSearchGroupsComputation.pendingSignature = "";
+          }
+          return;
+        }
+        const groups = buildSearchResultGroups();
+        cacheSearchGroups(signature, groups);
+        if (scheduleSearchGroupsComputation.pendingSignature === signature) {
+          scheduleSearchGroupsComputation.pendingSignature = "";
+        }
+        if (state.view === "messages" && messageSearchSignature() === signature) {
+          renderContent();
+          scheduleSyncScrollTopButtons();
+        }
+      }, 160);
+    }
+
+    function buildSearchResultGroups() {
       const groups = [];
       if (!state.messageSearch) return groups;
 
@@ -4388,7 +4757,7 @@ HTML_TEMPLATE = """<!doctype html>
       return groups.sort((left, right) => {
         const timeDiff = timeValue(right.focusTimestamp) - timeValue(left.focusTimestamp);
         if (timeDiff !== 0) return timeDiff;
-        return (left.thread.label || left.thread.id || "").localeCompare(right.thread.label || right.thread.id || "");
+        return threadDisplayLabel(left.thread).localeCompare(threadDisplayLabel(right.thread));
       });
     }
 
@@ -4404,11 +4773,11 @@ HTML_TEMPLATE = """<!doctype html>
             <span class="list-pill">${escapeHtml(prettyCategory(thread.category))}</span>
             <span class="list-time">${escapeHtml(fmt(threadLastTimestampRaw(thread)))}</span>
           </div>
-          <strong class="list-title">${escapeHtml(stripFcs(thread.label || thread.id))}</strong>
+          <strong class="list-title">${escapeHtml(threadDisplayLabel(thread))}</strong>
           <div class="preview">${escapeHtml(latestThreadPreview(thread) || "No preview available.")}</div>
           <div class="list-stats">
             <span>${escapeHtml(NUMBER_FORMATTER.format(thread.message_count || (thread.messages || []).length))} items</span>
-            <span>${escapeHtml(NUMBER_FORMATTER.format((thread.participants || []).length))} people</span>
+            <span>${escapeHtml(NUMBER_FORMATTER.format(threadParticipantCount(thread)))} people</span>
           </div>
         </div>
       `).join("") || `<div class="empty">No conversations match the current filters.</div>`;
@@ -4435,8 +4804,20 @@ HTML_TEMPLATE = """<!doctype html>
       `).join("") || `<div class="empty">No calls match the current filters.</div>`;
     }
 
-    function renderSearchResultsPanel() {
-      const groups = searchResultGroups();
+    function renderSearchLoadingPanel() {
+      contentPanel.innerHTML = `
+        <section class="detail-hero">
+          <div class="kicker">Grouped Search Results</div>
+          <div class="title">
+            <h2>Search Results</h2>
+            <div class="chip chip-strong">Searching...</div>
+          </div>
+          <div class="detail-subtle">Building grouped timeline matches for <strong>${escapeHtml(String(state.messageSearch || "").trim())}</strong>. Sidebar conversation matches are ready; detailed results will appear momentarily.</div>
+        </section>
+      `;
+    }
+
+    function renderSearchResultsPanel(groups) {
       const totalMatches = groups.reduce((sum, group) => sum + group.hitCount, 0);
       contentPanel.innerHTML = `
         <section class="detail-hero">
@@ -4452,7 +4833,7 @@ HTML_TEMPLATE = """<!doctype html>
             <div class="search-group">
               <div class="search-group-header">
                 <div>
-                  <div><strong>${escapeHtml(stripFcs(group.thread.label || group.thread.id))}</strong></div>
+                  <div><strong>${escapeHtml(threadDisplayLabel(group.thread))}</strong></div>
                   <div class="search-group-meta">${escapeHtml(prettyCategory(group.thread.category))} | ${escapeHtml(fmt(group.focusTimestamp))} | ${escapeHtml(String(group.hitCount))} match${group.hitCount === 1 ? "" : "es"}</div>
                 </div>
                 <button type="button" class="call-link open-search-thread" data-thread-id="${escapeHtml(group.thread.id)}" data-focus-time="${escapeHtml(group.focusTimestamp || "")}" data-focus-call-key="${escapeHtml(group.focusCallKey || "")}" data-view-filter="${escapeHtml(group.viewFilter || "all")}">Open In Chats</button>
@@ -4476,16 +4857,13 @@ HTML_TEMPLATE = """<!doctype html>
 
       [...contentPanel.querySelectorAll(".open-search-thread")].forEach(element => {
         element.addEventListener("click", () => {
-          state.view = "messages";
-          state.threadId = element.dataset.threadId;
-          state.messageViewFilter = element.dataset.viewFilter || "all";
-          state.threadDateFrom = state.messageDateFrom || "";
-          state.threadDateTo = state.messageDateTo || "";
-          state.focusTimestamp = element.dataset.focusTime || null;
-          state.focusCallKey = element.dataset.focusCallKey || null;
-          state.messageSearch = "";
-          messageSearch.value = "";
-          renderView();
+          openThreadView({
+            threadId: element.dataset.threadId,
+            clearSearch: true,
+            focusTimestamp: element.dataset.focusTime || null,
+            focusCallKey: element.dataset.focusCallKey || null,
+            revealInSidebar: true,
+          });
         });
       });
 
@@ -4516,7 +4894,7 @@ HTML_TEMPLATE = """<!doctype html>
       const eventCount = messages.filter(message => message.quality === "event").length;
       const curatedCount = messages.filter(message => message.quality !== "event").length;
       const meeting = thread.meeting || {};
-      const meetingSubject = stripFcs(meeting.subject || meetingCall.meeting_subject || meta.topic || thread.label || "");
+      const meetingSubject = stripFcs(meeting.subject || meetingCall.meeting_subject || meta.topic || threadDisplayLabel(thread) || "");
       const meetingStart = meeting.startTime || meetingCall.meeting_start_time || "";
       const meetingEnd = meeting.endTime || meetingCall.meeting_end_time || "";
       const meetingWindowLabel = meetingStart ? `${fmt(meetingStart)} to ${fmt(meetingEnd)}` : "";
@@ -4525,11 +4903,11 @@ HTML_TEMPLATE = """<!doctype html>
         <section class="detail-hero">
           <div class="kicker">${escapeHtml(prettyCategory(thread.category))}</div>
           <div class="title">
-            <h2>${escapeHtml(stripFcs(thread.label || thread.id))}</h2>
+            <h2>${escapeHtml(threadDisplayLabel(thread))}</h2>
             <div class="chip chip-strong">${escapeHtml(NUMBER_FORMATTER.format(allMessages.length))} timeline items</div>
           </div>
           <div class="detail-subtle">${escapeHtml(showCompactChatMeta
-            ? `${NUMBER_FORMATTER.format((thread.participants || []).length)} participants | ${NUMBER_FORMATTER.format(linkedCallCount)} linked calls`
+            ? `${NUMBER_FORMATTER.format(threadParticipantCount(thread))} participants | ${NUMBER_FORMATTER.format(linkedCallCount)} linked calls`
             : (meetingSubject || "Meeting metadata available below"))}</div>
           <div class="participant-cloud">
             ${renderExpandableChipGroup(threadParticipantEntries(thread), {
@@ -4543,6 +4921,7 @@ HTML_TEMPLATE = """<!doctype html>
             <div class="segmented">
               <button type="button" class="seg-btn message-filter ${state.messageViewFilter === "all" ? "active" : ""}" data-filter="all">All</button>
               <button type="button" class="seg-btn message-filter ${state.messageViewFilter === "messages" ? "active" : ""}" data-filter="messages">Messages</button>
+              <button type="button" class="seg-btn message-filter ${state.messageViewFilter === "calls" ? "active" : ""}" data-filter="calls">Calls</button>
               <button type="button" class="seg-btn message-filter ${state.messageViewFilter === "events" ? "active" : ""}" data-filter="events">Events</button>
             </div>
             <div class="call-event-actions">
@@ -4574,7 +4953,7 @@ HTML_TEMPLATE = """<!doctype html>
         </div>
         <div class="meta-grid">
           <div class="meta-block"><div class="k">Thread Id</div><div class="mono">${escapeHtml(thread.id)}</div></div>
-          <div class="meta-block"><div class="k">Participants</div><div>${escapeHtml(NUMBER_FORMATTER.format((thread.participants || []).length))}</div></div>
+          <div class="meta-block"><div class="k">Participants</div><div>${escapeHtml(NUMBER_FORMATTER.format(threadParticipantCount(thread)))}</div></div>
           <div class="meta-block"><div class="k">Merged Calls</div><div>${escapeHtml(NUMBER_FORMATTER.format(linkedCallCount))}</div></div>
           ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Subject</div><div>${escapeHtml(meetingSubject)}</div></div>`}
           ${showCompactChatMeta ? "" : `<div class="meta-block"><div class="k">Meeting Window</div><div>${escapeHtml(meetingWindowLabel)}</div></div>`}
@@ -4762,14 +5141,15 @@ HTML_TEMPLATE = """<!doctype html>
       initParticipantChatLinks(contentPanel);
       [...contentPanel.querySelectorAll(".open-thread-record")].forEach(element => {
         element.addEventListener("click", () => {
-          state.view = "messages";
-          state.threadId = element.dataset.threadId;
-          state.messageViewFilter = element.dataset.viewFilter || "all";
-          state.threadDateFrom = state.messageDateFrom || "";
-          state.threadDateTo = state.messageDateTo || "";
-          state.focusTimestamp = element.dataset.focusTime || null;
-          state.focusCallKey = element.dataset.focusCallKey || null;
-          renderView();
+          openThreadView({
+            threadId: element.dataset.threadId,
+            clearSearch: true,
+            viewFilter: element.dataset.viewFilter || "all",
+            focusTimestamp: element.dataset.focusTime || null,
+            focusCallKey: element.dataset.focusCallKey || null,
+            syncThreadDateToSidebar: true,
+            revealInSidebar: true,
+          });
         });
       });
     }
@@ -4780,7 +5160,13 @@ HTML_TEMPLATE = """<!doctype html>
         return;
       }
       if (state.messageSearch) {
-        renderSearchResultsPanel();
+        const signature = messageSearchSignature();
+        if (signature && SEARCH_GROUPS_CACHE.has(signature)) {
+          renderSearchResultsPanel(SEARCH_GROUPS_CACHE.get(signature) || []);
+        } else {
+          scheduleSearchGroupsComputation();
+          renderSearchLoadingPanel();
+        }
         return;
       }
       renderThreadPanel();
@@ -4824,6 +5210,15 @@ HTML_TEMPLATE = """<!doctype html>
     threadList.addEventListener("click", event => {
       const row = event.target.closest(".list-row[data-id]");
       if (!row || !threadList.contains(row)) return;
+      if (state.messageSearch) {
+        openThreadView({
+          threadId: row.dataset.id,
+          clearSearch: true,
+          revealInSidebar: true,
+          scrollTop: true,
+        });
+        return;
+      }
       state.threadId = row.dataset.id;
       state.threadDateFrom = state.messageDateFrom || "";
       state.threadDateTo = state.messageDateTo || "";
@@ -4841,8 +5236,13 @@ HTML_TEMPLATE = """<!doctype html>
     });
 
     messageSearch.addEventListener("input", event => {
-      state.messageSearch = event.target.value.trim();
+      const nextValue = String(event.target.value || "");
+      state.messageSearch = nextValue.trim() ? nextValue : "";
       scheduleMessageSearchRender();
+    });
+
+    messageSearch.addEventListener("focus", () => {
+      scheduleIdleWork(primeMessageSearchCaches);
     });
 
     categoryFilter.addEventListener("change", event => {
@@ -4926,7 +5326,7 @@ HTML_TEMPLATE = """<!doctype html>
       const button = event.target.closest("[data-clear-filter]");
       if (!button || !activeFilterBar.contains(button)) return;
       const filterKey = button.dataset.clearFilter;
-      if (filterKey === "message-search") state.messageSearch = "";
+      if (filterKey === "message-search") clearMessageSearchState();
       if (filterKey === "message-category") state.category = "";
       if (filterKey === "message-date") {
         state.messageDateFrom = "";
@@ -4999,6 +5399,37 @@ HTML_TEMPLATE = """<!doctype html>
       window.setTimeout(() => callback({ didTimeout: true, timeRemaining: () => 0 }), 48);
     }
 
+    function primeMessageSearchCaches(deadline) {
+      const threads = DATA.threads || [];
+      let threadIndex = primeMessageSearchCaches.threadIndex || 0;
+      let messageIndex = primeMessageSearchCaches.messageIndex || 0;
+
+      while (threadIndex < threads.length && (deadline.didTimeout || deadline.timeRemaining() > 4)) {
+        const thread = threads[threadIndex];
+        if (messageIndex === 0) {
+          threadSearchText(thread);
+          sortedThreadTimelineItems(thread);
+        }
+        const messages = thread.messages || [];
+        while (messageIndex < messages.length && (deadline.didTimeout || deadline.timeRemaining() > 4)) {
+          searchMessageText(thread, messages[messageIndex]);
+          messageIndex += 1;
+        }
+        if (messageIndex >= messages.length) {
+          threadIndex += 1;
+          messageIndex = 0;
+          continue;
+        }
+        break;
+      }
+
+      primeMessageSearchCaches.threadIndex = threadIndex;
+      primeMessageSearchCaches.messageIndex = messageIndex;
+      if (threadIndex < threads.length) {
+        scheduleIdleWork(primeMessageSearchCaches);
+      }
+    }
+
     function primeCallCaches(deadline) {
       const calls = DATA.calls || [];
       let index = primeCallCaches.index || 0;
@@ -5015,12 +5446,21 @@ HTML_TEMPLATE = """<!doctype html>
       }
     }
 
+    function renderInitialView() {
+      renderView();
+      scheduleIdleWork(primeMessageSearchCaches);
+      scheduleIdleWork(primeCallCaches);
+    }
+
     restoreState();
     syncInputsFromState();
     renderChrome();
     scheduleSyncScrollTopButtons();
-    scheduleIdleWork(primeCallCaches);
-    renderView();
+    if (window.requestAnimationFrame) {
+      window.requestAnimationFrame(renderInitialView);
+    } else {
+      renderInitialView();
+    }
   </script>
 </body>
 </html>

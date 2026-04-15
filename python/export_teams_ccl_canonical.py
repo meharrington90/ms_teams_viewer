@@ -287,6 +287,31 @@ def flatten_members(members: list[dict], guid_to_name: dict[str, str]) -> tuple[
     return participant_ids, participants
 
 
+def flatten_chat_title_users(chat_title: dict | None, guid_to_name: dict[str, str]) -> tuple[list[str], list[str]]:
+    participant_ids = []
+    participants = []
+    if not isinstance(chat_title, dict):
+        return participant_ids, participants
+
+    for user in chat_title.get("avatarUsersInfo") or []:
+        if not isinstance(user, dict):
+            continue
+        guid = extract_guid(
+            safe_text(user.get("mri"))
+            or safe_text(user.get("id"))
+            or safe_text(user.get("userId"))
+            or safe_text(user.get("homeMri"))
+        )
+        display_name = safe_text(user.get("displayName"))
+        if guid and display_name:
+            guid_to_name.setdefault(guid, display_name)
+        if guid and guid not in participant_ids:
+            participant_ids.append(guid)
+        if display_name and display_name not in participants:
+            participants.append(display_name)
+    return participant_ids, participants
+
+
 def merge_thread_participant(thread: dict, participant_id: str | None = None, participant_name: str | None = None) -> None:
     normalized_id = extract_guid(participant_id)
     cleaned_name = clean_text(participant_name)
@@ -887,7 +912,21 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
 
                 participant_ids, participants = flatten_members(value.get("members") or [], guid_to_name)
                 thread["participant_ids"] = sorted(set(thread["participant_ids"]) | set(participant_ids))
+                thread["current_member_ids"] = sorted(set(thread.get("current_member_ids", [])) | set(participant_ids))
                 thread["participants"] = sorted(set(thread["participants"]) | set(participants))
+
+                chat_title = value.get("chatTitle") or {}
+                if isinstance(chat_title, dict):
+                    short_title = safe_text(chat_title.get("shortTitle"))
+                    long_title = safe_text(chat_title.get("longTitle"))
+                    if short_title:
+                        metadata["chat_title_short"] = short_title
+                    if long_title:
+                        metadata["chat_title_long"] = long_title
+
+                    participant_ids, participants = flatten_chat_title_users(chat_title, guid_to_name)
+                    thread["participant_ids"] = sorted(set(thread["participant_ids"]) | set(participant_ids))
+                    thread["participants"] = sorted(set(thread["participants"]) | set(participants))
 
     best_messages: dict[tuple[str, str], dict] = {}
     calllog_calls: dict[str, dict] = {}
@@ -1185,6 +1224,12 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
             )
 
         if is_placeholder_label(thread.get("label"), thread_id):
+            metadata = thread.get("metadata") or {}
+            chat_title_short = clean_text(metadata.get("chat_title_short"))
+            if chat_title_short and chat_title_short != current_user_name:
+                thread["label"] = chat_title_short
+
+        if is_placeholder_label(thread.get("label"), thread_id):
             explicit_title = thread_titles.get(thread_id)
             if explicit_title:
                 thread["label"] = explicit_title
@@ -1212,6 +1257,7 @@ def build_export(root: Path | str | None = None, show_decode_errors: bool = True
         thread["message_count"] = len(thread["messages"])
         thread["participants"] = sorted(set(thread.get("participants", [])))
         thread["participant_ids"] = sorted(set(thread.get("participant_ids", [])))
+        thread["current_member_ids"] = sorted(set(thread.get("current_member_ids", [])))
 
     merge_thread_event_calls(calls, threads, guid_to_name)
     enrich_calls_for_current_user(calls, current_user_oid, current_user_name)
